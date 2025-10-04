@@ -2,10 +2,14 @@ project_type: flutter
 
 dependencies:
   - name: flutter
-    min_version: "3.29.4"
+    min_version: "3.29.2"
     version_command: flutter --version | head -n 1 | awk '{print $2}'
 
 hooks:
-  pre_run:
-    - command: "echo"
-      args: ["Pre-run: could start Playserve here"]
+  - name: Custom Hook
+    hook_type: prepare_system
+    command: "echo"
+    args: ["Custom hook could go here"]
+    async: true
+    env:
+      TEST_ENV: 1

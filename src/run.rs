@@ -12,15 +12,21 @@ pub struct Run {
 
 impl Run {
     pub fn new(config: Config) -> Self {
-        let hooks = Self::load_hooks();
+        let hooks = Self::load_hooks(&config);
         Self { config, hooks }
     }
 
-    fn load_hooks() -> Vec<Box<dyn hooks::iface::Hook>> {
-        vec![
+    fn load_hooks(config: &Config) -> Vec<Box<dyn hooks::iface::Hook>> {
+        let mut hooks: Vec<Box<dyn hooks::iface::Hook>> = vec![
             Box::new(hooks::check_dependency::HookCheckDependency::new()),
             Box::new(hooks::connect::HookConnect::new()),
-        ]
+        ];
+
+        hooks.extend(config.hooks.iter().map(|hook| {
+            Box::new(hooks::custom::HookCustom::new(hook.clone())) as Box<dyn hooks::iface::Hook>
+        }));
+
+        hooks
     }
 
     fn run_hooks_of_type(&self, hook_type: hooks::iface::HookType) -> EmptyResult {

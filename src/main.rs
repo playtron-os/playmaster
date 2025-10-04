@@ -4,6 +4,8 @@ use crate::{config::Config, run::Run, utils::errors::EmptyResult};
 
 mod config;
 mod hooks;
+#[cfg(target_os = "linux")]
+mod linux;
 mod run;
 mod utils;
 
@@ -17,6 +19,12 @@ fn main() -> EmptyResult {
     }
 
     println!("🔧 Simple Test Controller, Version: {version}");
+
+    #[cfg(target_os = "linux")]
+    {
+        use crate::utils::command::CommandUtils;
+        CommandUtils::set_death_signal();
+    }
 
     let config = Config::from_curr_dir()?;
     let run = Run::new(config);

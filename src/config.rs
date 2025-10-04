@@ -1,8 +1,11 @@
-use std::fs;
+use std::{collections::HashMap, fs};
 
 use serde::Deserialize;
 
-use crate::utils::errors::{ResultTrait, ResultWithError};
+use crate::{
+    hooks::iface::HookType,
+    utils::errors::{ResultTrait, ResultWithError},
+};
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "snake_case")]
@@ -15,6 +18,7 @@ pub enum ProjectType {
 pub struct Config {
     pub project_type: ProjectType,
     pub dependencies: Vec<Dependency>,
+    pub hooks: Vec<HookConfig>,
 }
 
 impl Config {
@@ -35,4 +39,15 @@ pub struct Dependency {
     pub name: String,
     pub min_version: String,
     pub version_command: String,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct HookConfig {
+    pub name: String,
+    pub hook_type: HookType,
+    #[serde(rename = "async")]
+    pub is_async: bool,
+    pub command: String,
+    pub args: Option<Vec<String>>,
+    pub env: Option<HashMap<String, String>>,
 }

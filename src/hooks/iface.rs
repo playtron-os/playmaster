@@ -1,3 +1,5 @@
+use serde::Deserialize;
+
 use crate::{config::Config, utils::errors::EmptyResult};
 
 /// Defines the types of hooks available in the system.
@@ -8,7 +10,8 @@ use crate::{config::Config, utils::errors::EmptyResult};
 /// BeforeTest: For actions to be performed before each individual test.
 /// AfterTest: For actions to be performed after each individual test.
 /// AfterAll: For actions to be performed after all tests have completed.
-#[derive(PartialEq, Eq, Clone, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug, Deserialize)]
+#[serde(rename_all = "snake_case")]
 pub enum HookType {
     Connect,
     VerifySystem,
