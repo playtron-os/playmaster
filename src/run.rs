@@ -67,5 +67,7 @@ impl Run {
         Ok(())
     }
 
-    fn run_tests(&self, features: Vec<FeatureTest>) {}
+    fn run_tests(&self, features: Vec<FeatureTest>) {
+        println!("#### {features:?}");
+    }
 }

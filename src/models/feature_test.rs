@@ -19,16 +19,12 @@ pub struct TestCase {
 }
 
 #[derive(Debug, Deserialize)]
-#[serde(tag = "action", rename_all = "snake_case")]
+#[serde(untagged)]
 pub enum Step {
-    #[serde(rename = "wait_for")]
-    WaitFor(WaitFor),
-    #[serde(rename = "tap")]
-    Tap(Tap),
-    #[serde(rename = "type")]
-    Type(TypeAction),
-    #[serde(rename = "match")]
-    Match(Match),
+    WaitFor { wait_for: WaitFor },
+    Tap { tap: Tap },
+    Type { r#type: TypeAction },
+    Match { r#match: Match },
 }
 
 #[derive(Debug, Deserialize)]
@@ -75,7 +71,7 @@ impl FeatureTest {
             cwd.push("sample_app");
         }
 
-        let config_path = cwd.join("test_features");
+        let config_path = cwd.join("feature_test");
 
         if !config_path.exists() {
             return Err("test_features directory not found".into());
