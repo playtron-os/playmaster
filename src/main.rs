@@ -1,6 +1,11 @@
-use std::env;
+use clap::Parser;
+use tracing::info;
 
-use crate::{config::Config, run::Run, utils::errors::EmptyResult};
+use crate::{
+    config::{AppArgs, Config},
+    run::Run,
+    utils::{errors::EmptyResult, logger::LoggerUtils},
+};
 
 mod config;
 mod hooks;
@@ -10,15 +15,10 @@ mod run;
 mod utils;
 
 fn main() -> EmptyResult {
+    let args = AppArgs::parse();
+
     let version = env!("CARGO_PKG_VERSION");
-
-    let args: Vec<String> = env::args().collect();
-    if args.iter().any(|a| a == "--version") {
-        println!("{}", version);
-        return Ok(());
-    }
-
-    println!("🔧 Simple Test Controller, Version: {version}");
+    info!("🔧 Simple Test Controller, Version: {version}");
 
     #[cfg(target_os = "linux")]
     {
@@ -26,8 +26,10 @@ fn main() -> EmptyResult {
         CommandUtils::set_death_signal();
     }
 
+    LoggerUtils::init();
+
     let config = Config::from_curr_dir()?;
-    let run = Run::new(config);
+    let run = Run::new(args, config);
     run.execute()?;
 
     Ok(())

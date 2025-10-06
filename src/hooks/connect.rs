@@ -1,5 +1,7 @@
+use tracing::info;
+
 use crate::{
-    config::Config,
+    config::{AppArgs, Config},
     hooks::iface::{Hook, HookType},
     utils::errors::{EmptyResult, ResultWithError},
 };
@@ -23,7 +25,7 @@ impl HookConnect {
             return Ok(true);
         }
 
-        println!("Proceeding with local connection.");
+        info!("Proceeding with local connection.");
         Ok(false)
     }
 }
@@ -33,13 +35,21 @@ impl Hook for HookConnect {
         HookType::Connect
     }
 
-    fn run(&self, _config: &Config) -> EmptyResult {
+    fn run(&self, args: &AppArgs, _config: &Config) -> EmptyResult {
+        match args.mode.as_ref() {
+            Some(mode) => {
+                info!("Connection mode specified via command line: {:?}", mode);
+                return Ok(());
+            }
+            None => {}
+        }
+
         if !self.prompt_for_remote_conn()? {
             return Ok(());
         }
 
         // TODO: Remote connection logic here
-        println!(
+        info!(
             "Remote connection feature is not implemented yet, so we will proceed with local connection."
         );
 

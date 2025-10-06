@@ -4,9 +4,11 @@ use shlex::Shlex;
 
 use crate::utils::errors::{OptionResultTrait as _, ResultWithError};
 
+#[allow(dead_code)]
 pub struct ShlexUtils {}
 
 impl ShlexUtils {
+    #[allow(dead_code)]
     pub fn parse_command(input: &str) -> ResultWithError<Command> {
         let parts: Vec<_> = Shlex::new(input).collect();
 

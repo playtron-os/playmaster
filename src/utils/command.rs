@@ -2,6 +2,7 @@ use std::process::Command;
 
 use crate::utils::errors::{ResultTrait, ResultWithError};
 
+#[allow(dead_code)]
 pub struct CommandOutput {
     pub stdout: String,
     pub stderr: String,

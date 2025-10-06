@@ -19,6 +19,7 @@ where
     }
 }
 
+#[allow(dead_code)]
 pub trait OptionResultTrait<T> {
     fn auto_err(self, desc: &str) -> ResultWithError<T>;
 }

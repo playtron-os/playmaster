@@ -1,6 +1,9 @@
 use serde::Deserialize;
 
-use crate::{config::Config, utils::errors::EmptyResult};
+use crate::{
+    config::{AppArgs, Config},
+    utils::errors::EmptyResult,
+};
 
 /// Defines the types of hooks available in the system.
 /// Connect: For establishing connections to a remote host if needed.
@@ -40,7 +43,7 @@ impl HookType {
 /// Trait that all hook implementations must adhere to.
 pub trait Hook {
     fn get_type(&self) -> HookType;
-    fn run(&self, config: &Config) -> EmptyResult;
+    fn run(&self, args: &AppArgs, config: &Config) -> EmptyResult;
 }
 
 pub trait HookListExt {

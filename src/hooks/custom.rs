@@ -1,9 +1,14 @@
-use std::{os::unix::process::CommandExt as _, process::Command};
+use std::process::Command;
+
+use tracing::{error, info};
 
 use crate::{
-    config::{Config, HookConfig},
+    config::{AppArgs, Config, HookConfig},
     hooks::iface::{Hook, HookType},
-    utils::errors::{EmptyResult, ResultTrait},
+    utils::{
+        errors::{EmptyResult, ResultTrait},
+        file_logger::FileLogger,
+    },
 };
 
 /// Custom hook that gets implementation based on yaml config.
@@ -33,6 +38,36 @@ impl HookCustom {
         let child = cmd.spawn().auto_err(
             format!("Failed to start custom hook async: {}", self.config.name).as_str(),
         )?;
+        let name = self.config.name.clone();
+
+        std::thread::spawn(move || {
+            let output = child.wait_with_output();
+            let stdout_logger = FileLogger::new(&format!("{name}.stdout.log"));
+            let stderr_logger = FileLogger::new(&format!("{name}.stderr.log"));
+
+            match output {
+                Ok(output) => {
+                    if !output.status.success() {
+                        error!(
+                            "[{name}] Custom hook async exited with non-zero status: {}",
+                            output.status
+                        );
+                    }
+
+                    if !output.stdout.is_empty() {
+                        let stdout = String::from_utf8_lossy(&output.stdout);
+                        stdout_logger.log(stdout.as_ref());
+                    }
+                    if !output.stderr.is_empty() {
+                        let stderr = String::from_utf8_lossy(&output.stderr);
+                        stderr_logger.log(stderr.as_ref());
+                    }
+                }
+                Err(e) => {
+                    error!("[{name}] Failed to wait for custom hook async: {}", e);
+                }
+            }
+        });
 
         Ok(())
     }
@@ -50,8 +85,8 @@ impl Hook for HookCustom {
         self.config.hook_type
     }
 
-    fn run(&self, _config: &Config) -> EmptyResult {
-        println!("Executing custom hook: {}", self.config.name);
+    fn run(&self, _args: &AppArgs, _config: &Config) -> EmptyResult {
+        info!("Executing custom hook: {}", self.config.name);
 
         if self.config.is_async {
             self.run_async()

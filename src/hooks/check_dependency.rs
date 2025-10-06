@@ -1,5 +1,7 @@
+use tracing::info;
+
 use crate::{
-    config::Config,
+    config::{AppArgs, Config},
     hooks::iface::{Hook, HookType},
     utils::{
         command::CommandUtils,
@@ -22,8 +24,8 @@ impl Hook for HookCheckDependency {
         HookType::VerifySystem
     }
 
-    fn run(&self, config: &Config) -> EmptyResult {
-        println!("Checking dependencies...");
+    fn run(&self, _args: &AppArgs, config: &Config) -> EmptyResult {
+        info!("Checking dependencies...");
 
         let mut invalid_dep = false;
 
@@ -32,12 +34,12 @@ impl Hook for HookCheckDependency {
                 .auto_err(format!("Failed to execute command: {}", dep.version_command).as_str())?;
 
             if SemverUtils::is_version_greater_or_equal(&dep.min_version, &output.stdout)? {
-                println!(
+                info!(
                     "✅ {} OK ({} ≥ {})",
                     dep.name, &output.stdout, dep.min_version
                 );
             } else {
-                println!(
+                info!(
                     "❌ {} too old ({} < {})",
                     dep.name, &output.stdout, dep.min_version
                 );
