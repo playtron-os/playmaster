@@ -2,7 +2,10 @@ use std::{fs, path::PathBuf};
 
 use serde::Deserialize;
 
-use crate::utils::errors::{ResultTrait, ResultWithError};
+use crate::utils::{
+    dir::DirUtils,
+    errors::{ResultTrait, ResultWithError},
+};
 
 #[derive(Debug, Deserialize)]
 pub struct FeatureTest {
@@ -66,12 +69,7 @@ pub enum MatchTarget {
 
 impl FeatureTest {
     pub fn all_from_curr_dir() -> ResultWithError<Vec<Self>> {
-        let mut cwd = std::env::current_dir().auto_err("Could not read current directory")?;
-        if cfg!(debug_assertions) {
-            cwd.push("sample_app");
-        }
-
-        let config_path = cwd.join("feature_test");
+        let config_path = DirUtils::exec_dir()?.join("feature_test");
 
         if !config_path.exists() {
             return Err("test_features directory not found".into());

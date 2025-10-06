@@ -2,7 +2,7 @@ use tracing::info;
 
 use crate::{
     hooks::iface::{Hook, HookType},
-    models::{args::AppArgs, config::Config},
+    models::{self, args::AppArgs, config::Config},
     utils::errors::{EmptyResult, ResultWithError},
 };
 
@@ -36,12 +36,11 @@ impl Hook for HookConnect {
     }
 
     fn run(&self, args: &AppArgs, _config: &Config) -> EmptyResult {
-        match args.mode.as_ref() {
-            Some(mode) => {
+        if let models::args::Command::Run { mode } = &args.command {
+            if let Some(mode) = mode {
                 info!("Connection mode specified via command line: {:?}", mode);
                 return Ok(());
             }
-            None => {}
         }
 
         if !self.prompt_for_remote_conn()? {

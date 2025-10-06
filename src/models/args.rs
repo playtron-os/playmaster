@@ -1,4 +1,4 @@
-use clap::{Parser, ValueEnum};
+use clap::{Parser, Subcommand, ValueEnum};
 
 #[derive(Debug, Clone, ValueEnum)]
 pub enum AppMode {
@@ -6,35 +6,37 @@ pub enum AppMode {
     Remote,
 }
 
+#[derive(Debug, Subcommand)]
+pub enum Command {
+    /// Generate Dart integration tests from YAML files
+    Gen,
+
+    /// Run tests in either local or remote mode
+    Run {
+        /// Mode to run the controller in
+        ///
+        /// When in remote mode, the controller will connect to an IP address in which to run the tests
+        /// When in local mode, the controller will run the tests in the local machine
+        #[arg(short, long, value_enum)]
+        mode: Option<AppMode>,
+    },
+}
+
 #[derive(Parser, Debug)]
 #[command(
     name = "Simple Test Controller",
     version,
-    about = "A simple test controller application to execute tests in local or remote mode.",
+    about = "A simple test controller application to execute or generate Flutter integration tests.",
     long_about = r#"
 The Simple Test Controller is a command-line tool designed to help automate and
-manage test execution across different environments.
+manage test execution across different environments or generate Dart test files
+from YAML-based feature definitions.
 
-You can run tests locally for quick validation or remotely to target devices
-and servers on your network. It supports defining test dependencies, running
-pre-execution hooks, and dynamically loading configuration files for flexible
-test workflows.
-
-Common use cases include:
-  • Running integration or functional tests on a local machine
-  • Executing test suites remotely over LAN-connected devices
-  • Managing test configurations via key=value arguments or YAML files
-  • Automating setup steps before test execution
-  • Extending functionality with custom hooks and commands
-
-Use the '--local' or '--remote' flags to select the desired execution mode.
+Use the `gen` subcommand to generate Dart integration tests, or `run` to execute
+them locally or remotely.
 "#
 )]
 pub struct AppArgs {
-    /// Mode to run the controller in
-    ///
-    /// When in remote mode, the controller will connect to an IP address in which to run the tests
-    /// When in local mode, the controller will run the tests in the local machine
-    #[arg(short, long, value_enum)]
-    pub mode: Option<AppMode>,
+    #[command(subcommand)]
+    pub command: Command,
 }

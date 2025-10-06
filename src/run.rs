@@ -70,4 +70,10 @@ impl Run {
     fn run_tests(&self, features: Vec<FeatureTest>) {
         println!("#### {features:?}");
     }
+
+    fn run_tests_locally(&self, features: Vec<FeatureTest>) {
+        for feature in features {
+            info!("Running feature test: {}", feature.name);
+        }
+    }
 }
