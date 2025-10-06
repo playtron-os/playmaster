@@ -3,8 +3,11 @@ use std::process::Command;
 use tracing::{error, info};
 
 use crate::{
-    config::{AppArgs, Config, HookConfig},
     hooks::iface::{Hook, HookType},
+    models::{
+        args::AppArgs,
+        config::{Config, HookConfig},
+    },
     utils::{
         errors::{EmptyResult, ResultTrait},
         file_logger::FileLogger,

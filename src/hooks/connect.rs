@@ -1,8 +1,8 @@
 use tracing::info;
 
 use crate::{
-    config::{AppArgs, Config},
     hooks::iface::{Hook, HookType},
+    models::{args::AppArgs, config::Config},
     utils::errors::{EmptyResult, ResultWithError},
 };
 

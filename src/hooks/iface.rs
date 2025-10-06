@@ -1,7 +1,7 @@
 use serde::Deserialize;
 
 use crate::{
-    config::{AppArgs, Config},
+    models::{args::AppArgs, config::Config},
     utils::errors::EmptyResult,
 };
 

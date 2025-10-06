@@ -1,16 +1,16 @@
-use clap::Parser;
+use clap::Parser as _;
 use tracing::info;
 
 use crate::{
-    config::{AppArgs, Config},
+    models::{args::AppArgs, config::Config},
     run::Run,
     utils::{errors::EmptyResult, logger::LoggerUtils},
 };
 
-mod config;
 mod hooks;
 #[cfg(target_os = "linux")]
 mod linux;
+mod models;
 mod run;
 mod utils;
 

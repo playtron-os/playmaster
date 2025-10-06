@@ -1,8 +1,8 @@
 use tracing::info;
 
 use crate::{
-    config::{AppArgs, Config},
     hooks::{self, iface::HookListExt as _},
+    models::{args::AppArgs, config::Config, feature_test::FeatureTest},
     utils::errors::EmptyResult,
 };
 
@@ -45,6 +45,8 @@ impl Run {
     }
 
     pub fn execute(&self) -> EmptyResult {
+        let features = FeatureTest::all_from_curr_dir()?;
+
         info!(
             "Executing with config for project type: {:?}",
             self.config.project_type
@@ -53,6 +55,8 @@ impl Run {
         for hook_type in hooks::iface::HookType::pre_hooks() {
             self.run_hooks_of_type(hook_type)?;
         }
+
+        self.run_tests(features);
 
         for hook_type in hooks::iface::HookType::post_hooks() {
             self.run_hooks_of_type(hook_type)?;
@@ -63,41 +67,5 @@ impl Run {
         Ok(())
     }
 
-    fn run_tests(config: &Config, remote: bool) {
-        // if let Some(hooks) = &config.hooks {
-        //     if let Some(pre_hooks) = &hooks.pre_run {
-        //         for hook in pre_hooks {
-        //             info!("⚙️ Running pre-run hook: {}", hook.command);
-        //             let mut cmd = Command::new(&hook.command);
-        //             if let Some(args) = &hook.args {
-        //                 cmd.args(args);
-        //             }
-        //             cmd.spawn().expect("Failed to start pre-run hook");
-        //         }
-        //     }
-        // }
-
-        // if remote {
-        //     info!("🌐 Running tests on remote device...");
-        //     if let Some(remote_cfg) = &config.remote {
-        //         info!("Target device: {:?}", remote_cfg.device_host);
-        //     }
-        // } else {
-        //     info!("🖥️ Running tests locally...");
-        //     // TODO: Execute test runner logic here
-        // }
-
-        // if let Some(hooks) = &config.hooks {
-        //     if let Some(post_hooks) = &hooks.post_run {
-        //         for hook in post_hooks {
-        //             info!("⚙️ Running post-run hook: {}", hook.command);
-        //             let mut cmd = Command::new(&hook.command);
-        //             if let Some(args) = &hook.args {
-        //                 cmd.args(args);
-        //             }
-        //             cmd.spawn().expect("Failed to start post-run hook");
-        //         }
-        //     }
-        // }
-    }
+    fn run_tests(&self, features: Vec<FeatureTest>) {}
 }
