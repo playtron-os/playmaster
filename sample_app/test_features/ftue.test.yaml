@@ -1,0 +1,26 @@
+name: First-Time User Experience
+description: >
+  Covers the FTUE flow, which is just the login for now
+
+tests:
+  - name: Successful Login
+    description: Enters the correct username and password and logs in
+    steps:
+      - wait_for:
+          text: "Login"
+      - tap:
+          placeholder: "Email"
+      - type:
+          by:
+            placeholder: "Email"
+          value: "qa@playtron.one"
+      - type:
+          by:
+            placeholder: "Password"
+          value: "password123"
+      - tap:
+          text: "Sign In"
+      - match:
+          text: "Welcome"
+      - match:
+          screenshot: "screenshots/screenshot.png"
