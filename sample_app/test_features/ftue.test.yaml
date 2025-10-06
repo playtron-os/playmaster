@@ -24,3 +24,23 @@ tests:
           text: "Welcome"
       - match:
           screenshot: "screenshots/screenshot.png"
+
+  - name: Invalid Login
+    description: Enters the incorrect username and password and logs in
+    steps:
+      - wait_for:
+          text: "Login"
+      - tap:
+          placeholder: "Email"
+      - type:
+          by:
+            placeholder: "Email"
+          value: "qa@playtron.one"
+      - type:
+          by:
+            placeholder: "Password"
+          value: "password"
+      - tap:
+          text: "Sign In"
+      - match:
+          text: "Invalid credentials"
