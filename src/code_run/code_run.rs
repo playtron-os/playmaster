@@ -1,23 +1,24 @@
 use tracing::info;
 
 use crate::{
+    code_run,
     hooks::{self, iface::HookListExt as _},
     models::{
         args::{AppArgs, AppMode, Command},
         config::Config,
         feature_test::FeatureTest,
     },
-    utils::errors::EmptyResult,
+    utils::errors::{EmptyResult, OptionResultTrait},
 };
 
-/// Main controller to run the application logic.
-pub struct Run {
+/// Main controller to run the tests.
+pub struct CodeRun {
     args: AppArgs,
     config: Config,
     hooks: Vec<Box<dyn hooks::iface::Hook>>,
 }
 
-impl Run {
+impl CodeRun {
     pub fn new(args: AppArgs, config: Config) -> Self {
         let hooks = Self::load_hooks(&config);
         Self {
@@ -60,7 +61,7 @@ impl Run {
             self.run_hooks_of_type(hook_type)?;
         }
 
-        self.run_tests(features);
+        self.run_tests(features)?;
 
         for hook_type in hooks::iface::HookType::post_hooks() {
             self.run_hooks_of_type(hook_type)?;
@@ -71,26 +72,44 @@ impl Run {
         Ok(())
     }
 
-    fn run_tests(&self, features: Vec<FeatureTest>) {
+    fn run_tests(&self, features: Vec<FeatureTest>) -> EmptyResult {
+        let runners: Vec<Box<dyn code_run::run_iface::CodeRunTrait>> = vec![Box::new(
+            code_run::run_flutter::RunFlutter::new(self.args.clone(), self.config.clone()),
+        )];
+        let runner = runners
+            .into_iter()
+            .find(|r| r.get_type() == self.config.project_type)
+            .auto_err(
+                format!(
+                    "No test runner found for project type: {:?}",
+                    self.config.project_type,
+                )
+                .as_str(),
+            )?;
+
         match &self.args.command {
             Command::Run { mode } => match mode {
-                Some(AppMode::Local) | None => self.run_tests_locally(features),
-                Some(AppMode::Remote) => self.run_tests_remotely(features),
+                Some(AppMode::Local) | None => self.run_tests_locally(runner, features),
+                Some(AppMode::Remote) => self.run_tests_remotely(runner, features),
             },
             _ => unreachable!(),
         }
     }
 
-    fn run_tests_locally(&self, features: Vec<FeatureTest>) {
-        for feature in features {
-            info!("Running feature test: {}", feature.name);
-            info!("Descriptino: ");
-        }
+    fn run_tests_locally(
+        &self,
+        runner: Box<dyn code_run::run_iface::CodeRunTrait>,
+        features: Vec<FeatureTest>,
+    ) -> EmptyResult {
+        runner.run(&features)
     }
 
-    fn run_tests_remotely(&self, features: Vec<FeatureTest>) {
-        for feature in features {
-            info!("Running feature test: {}", feature.name);
-        }
+    // TODO: Implement remote test running
+    fn run_tests_remotely(
+        &self,
+        runner: Box<dyn code_run::run_iface::CodeRunTrait>,
+        features: Vec<FeatureTest>,
+    ) -> EmptyResult {
+        runner.run(&features)
     }
 }

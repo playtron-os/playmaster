@@ -18,3 +18,5 @@ dirs = "6.0.0"
 chrono = "0.4.42"
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "ansi"] }
+serde_json = "1.0.145"
+indicatif = "0.18.0"

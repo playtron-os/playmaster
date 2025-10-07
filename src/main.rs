@@ -3,17 +3,17 @@ use tracing::info;
 
 use crate::{
     code_gen::code_gen::CodeGen,
+    code_run::code_run::CodeRun,
     models::{args::AppArgs, config::Config},
-    run::Run,
     utils::{errors::EmptyResult, logger::LoggerUtils},
 };
 
 mod code_gen;
+mod code_run;
 mod hooks;
 #[cfg(target_os = "linux")]
 mod linux;
 mod models;
-mod run;
 mod utils;
 
 fn main() -> EmptyResult {
@@ -34,7 +34,7 @@ fn main() -> EmptyResult {
 
     match args.command {
         models::args::Command::Run { .. } => {
-            let run = Run::new(args, config);
+            let run = CodeRun::new(args, config);
             run.execute()?;
         }
         models::args::Command::Gen {} => {
