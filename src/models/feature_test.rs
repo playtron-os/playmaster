@@ -7,6 +7,7 @@ use crate::utils::{
     errors::{ResultTrait, ResultWithError},
 };
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize)]
 pub struct FeatureTest {
     pub name: String,
