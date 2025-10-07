@@ -10,14 +10,14 @@ use crate::{
     },
 };
 
-#[derive(Debug, Deserialize, PartialEq)]
+#[derive(Debug, Deserialize, PartialEq, Clone)]
 #[serde(rename_all = "snake_case")]
 pub enum ProjectType {
     Flutter,
 }
 
 /// Configuration structure for the test controller application.
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct Config {
     pub project_type: ProjectType,
     pub dependencies: Vec<Dependency>,
@@ -32,7 +32,7 @@ impl Config {
     }
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Clone)]
 pub struct Dependency {
     pub name: String,
     pub min_version: String,

@@ -6,8 +6,7 @@ impl LoggerUtils {
     pub fn init() {
         fmt()
             .with_env_filter(
-                EnvFilter::from_default_env() // Enables RUST_LOG=debug or crate=trace
-                    .add_directive("warn".parse().unwrap()), // Default level if not set
+                EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")),
             )
             .with_target(false) // Optional: hide module names
             .with_level(true) // Show level (INFO, DEBUG, etc.)

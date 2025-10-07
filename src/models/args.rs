@@ -6,7 +6,7 @@ pub enum AppMode {
     Remote,
 }
 
-#[derive(Debug, Subcommand)]
+#[derive(Debug, Subcommand, Clone)]
 pub enum Command {
     /// Generate Dart integration tests from YAML files
     Gen,
@@ -22,7 +22,7 @@ pub enum Command {
     },
 }
 
-#[derive(Parser, Debug)]
+#[derive(Parser, Debug, Clone)]
 #[command(
     name = "Simple Test Controller",
     version,

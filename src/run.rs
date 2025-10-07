@@ -2,7 +2,11 @@ use tracing::info;
 
 use crate::{
     hooks::{self, iface::HookListExt as _},
-    models::{args::AppArgs, config::Config, feature_test::FeatureTest},
+    models::{
+        args::{AppArgs, AppMode, Command},
+        config::Config,
+        feature_test::FeatureTest,
+    },
     utils::errors::EmptyResult,
 };
 
@@ -68,10 +72,23 @@ impl Run {
     }
 
     fn run_tests(&self, features: Vec<FeatureTest>) {
-        println!("#### {features:?}");
+        match &self.args.command {
+            Command::Run { mode } => match mode {
+                Some(AppMode::Local) | None => self.run_tests_locally(features),
+                Some(AppMode::Remote) => self.run_tests_remotely(features),
+            },
+            _ => unreachable!(),
+        }
     }
 
     fn run_tests_locally(&self, features: Vec<FeatureTest>) {
+        for feature in features {
+            info!("Running feature test: {}", feature.name);
+            info!("Descriptino: ");
+        }
+    }
+
+    fn run_tests_remotely(&self, features: Vec<FeatureTest>) {
         for feature in features {
             info!("Running feature test: {}", feature.name);
         }

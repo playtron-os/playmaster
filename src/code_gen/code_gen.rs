@@ -44,18 +44,23 @@ impl CodeGen {
 
         let cwd = DirUtils::exec_dir()?;
         let out_dir = cwd.join("integration_test/generated");
+
+        _ = fs::remove_dir_all(&out_dir);
         fs::create_dir_all(out_dir)?;
 
         let generators = self.get_generators()?;
         for generator in generators {
-            generator.run(&self.args, &self.config, &features)?;
+            generator.run(&features)?;
         }
 
         Ok(())
     }
 
     fn get_generators(&self) -> ResultWithError<Vec<Box<dyn CodeGenTrait>>> {
-        let all_generators: Vec<Box<dyn CodeGenTrait>> = vec![Box::new(GenFlutter {})];
+        let all_generators: Vec<Box<dyn CodeGenTrait>> = vec![Box::new(GenFlutter::from_exec_dir(
+            self.args.clone(),
+            self.config.clone(),
+        )?)];
 
         let generators = all_generators
             .into_iter()

@@ -19,9 +19,6 @@ mod utils;
 fn main() -> EmptyResult {
     let args = AppArgs::parse();
 
-    let version = env!("CARGO_PKG_VERSION");
-    info!("🔧 Simple Test Controller, Version: {version}");
-
     #[cfg(target_os = "linux")]
     {
         use crate::utils::command::CommandUtils;
@@ -29,6 +26,9 @@ fn main() -> EmptyResult {
     }
 
     LoggerUtils::init();
+
+    let version = env!("CARGO_PKG_VERSION");
+    info!("🔧 Simple Test Controller, Version: {version}");
 
     let config = Config::from_curr_dir()?;
 

@@ -1,4 +1,4 @@
-name: First-Time User Experience
+name: FirstTime User Experience
 description: >
   Covers the FTUE flow, which is just the login for now
 
@@ -20,6 +20,8 @@ tests:
           value: "password123"
       - tap:
           text: "Sign In"
+      - wait_for:
+          text: "Welcome"
       - match:
           text: "Welcome"
       - match:
