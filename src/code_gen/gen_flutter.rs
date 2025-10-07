@@ -63,8 +63,14 @@ impl GenFlutter {
         let file = self.out_dir.join("helpers.dart");
 
         let content = r#"// GENERATED FILE - DO NOT EDIT
+import 'dart:io';
+import 'dart:typed_data';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
+import 'package:path/path.dart' as p;
+import 'package:screenshot/screenshot.dart';
+import 'package:image/image.dart' as img;
 
 /// Custom extensions for WidgetTester and Finders used by generated tests.
 extension WidgetTesterExtensions on WidgetTester {
@@ -93,7 +99,78 @@ extension WidgetTesterExtensions on WidgetTester {
       await pump(step);
       if (!any(finder)) return;
     }
-    throw Exception('Widget still visible after ${timeout.inSeconds}s: $finder');
+    throw Exception(
+      'Widget still visible after ${timeout.inSeconds}s: $finder',
+    );
+  }
+
+  Future<void> compareScreenshot(String name, {bool update = false}) async {
+    // --- Paths ---
+    final String projectRoot = Directory.current.path;
+    final String folderPath = p.join(
+      projectRoot,
+      'integration_test',
+      'screenshots',
+    );
+    final String imagePath = p.join(folderPath, '$name.png');
+
+    // --- Capture current screen ---
+    final el = find.byWidgetPredicate((w) => w is Screenshot);
+    final widget = el.first.evaluate().first.widget as Screenshot;
+    final res = await widget.controller.capture(
+      delay: const Duration(milliseconds: 10),
+    );
+
+    if (res == null) {
+      throw Exception('Failed to capture screenshot');
+    }
+
+    final File imageFile = File(imagePath);
+    await Directory(folderPath).create(recursive: true);
+
+    if (update || !await imageFile.exists()) {
+      // ✅ Update mode → save new reference image
+      await imageFile.writeAsBytes(res);
+      debugPrint('Updated reference screenshot: $imagePath');
+    } else {
+      // 🔍 Compare mode → diff against existing
+      final Uint8List existingBytes = await imageFile.readAsBytes();
+
+      final img.Image? oldImg = img.decodeImage(existingBytes);
+      final img.Image? newImg = img.decodeImage(res);
+
+      if (oldImg == null || newImg == null) {
+        throw Exception('Failed to decode one of the images');
+      }
+
+      // Make sure both have same dimensions
+      if (oldImg.width != newImg.width || oldImg.height != newImg.height) {
+        throw Exception('Screenshot sizes differ for $name');
+      }
+
+      // Compute pixel-wise difference
+      int diffPixels = 0;
+      for (int y = 0; y < oldImg.height; y++) {
+        for (int x = 0; x < oldImg.width; x++) {
+          if (oldImg.getPixel(x, y) != newImg.getPixel(x, y)) {
+            diffPixels++;
+          }
+        }
+      }
+
+      final totalPixels = oldImg.width * oldImg.height;
+      final diffRatio = diffPixels / totalPixels;
+
+      // 0.1% threshold
+      if (diffRatio > 0.001) {
+        throw Exception(
+          '''Screenshot comparison failed for $name, please update screenshots if the changes are expected.
+
+Please run the following command to update screenshots:
+flutter test integration_test --dart-define=UPDATE_SCREENSHOTS=true''',
+        );
+      }
+    }
   }
 }
 
@@ -103,7 +180,7 @@ extension FinderExtensions on CommonFinders {
     return byWidgetPredicate((w) {
       if (w is TextField && w.decoration?.labelText == placeholder) return true;
       return false;
-    }, description: 'TextField(labelText=\"$placeholder\")');
+    }, description: 'TextField(labelText="$placeholder")');
   }
 
   /// Finds a widget by a [ValueKey] string or prefix.
@@ -114,7 +191,7 @@ extension FinderExtensions on CommonFinders {
         return key.value.startsWith(prefix);
       }
       return false;
-    }, description: 'Widget with ValueKey prefix \"$prefix\"');
+    }, description: 'Widget with ValueKey prefix "$prefix"');
   }
 }
 "#;
@@ -203,9 +280,7 @@ impl FeatureTest {
         out.push_str("import 'package:sample_app/main.dart' as app;\n\n");
         out.push_str("import 'helpers.dart';\n\n");
         out.push_str("void main() {\n");
-        out.push_str(
-            "  final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();\n\n",
-        );
+        out.push_str("  IntegrationTestWidgetsFlutterBinding.ensureInitialized();\n\n");
         out.push_str(&format!("  group('{}', () {{\n", self.name));
 
         // Test cases
@@ -262,7 +337,7 @@ impl Step {
                     format!("      expect(find.text('{}'), findsOneWidget);\n", text)
                 }
                 feature_test::MatchTarget::Screenshot { screenshot } => {
-                    format!("      await binding.takeScreenshot('{}');\n", screenshot)
+                    format!("      await tester.compareScreenshot('{}');\n", screenshot)
                 }
             },
         }

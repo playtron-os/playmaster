@@ -1,4 +1,4 @@
-name: FirstTime User Experience
+name: First Time User Experience
 description: >
   Covers the FTUE flow, which is just the login for now
 
@@ -25,7 +25,7 @@ tests:
       - match:
           text: "Welcome"
       - match:
-          screenshot: "screenshots/screenshot.png"
+          screenshot: "screenshot_welcome"
 
   - name: Invalid Login
     description: Enters the incorrect username and password and logs in
@@ -44,5 +44,5 @@ tests:
           value: "password"
       - tap:
           text: "Sign In"
-      - match:
+      - wait_for:
           text: "Invalid credentials"

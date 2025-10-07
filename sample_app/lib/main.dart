@@ -5,9 +5,12 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:screenshot/screenshot.dart';
 
 void main() {
-  runApp(const SampleApp());
+  runApp(
+    Screenshot(controller: ScreenshotController(), child: const SampleApp()),
+  );
 }
 
 class SampleApp extends StatelessWidget {

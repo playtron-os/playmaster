@@ -6,9 +6,9 @@ import 'package:sample_app/main.dart' as app;
 import 'helpers.dart';
 
 void main() {
-  final binding = IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+  IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  group('FirstTime User Experience', () {
+  group('First Time User Experience', () {
     testWidgets('Successful Login', (tester) async {
       app.main();
       await tester.pumpAndSettle();
@@ -20,7 +20,7 @@ void main() {
       await tester.tap(find.text('Sign In'));
       await tester.pumpUntilFound(find.text('Welcome'));
       expect(find.text('Welcome'), findsOneWidget);
-      await binding.takeScreenshot('screenshots/screenshot.png');
+      await tester.compareScreenshot('screenshot_welcome');
     });
 
     testWidgets('Invalid Login', (tester) async {
@@ -32,7 +32,7 @@ void main() {
       await tester.enterText(find.byPlaceholder('Email'), 'qa@playtron.one');
       await tester.enterText(find.byPlaceholder('Password'), 'password');
       await tester.tap(find.text('Sign In'));
-      expect(find.text('Invalid credentials'), findsOneWidget);
+      await tester.pumpUntilFound(find.text('Invalid credentials'));
     });
   });
 }
