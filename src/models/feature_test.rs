@@ -31,8 +31,10 @@ pub enum Step {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct WaitFor {
-    pub text: String,
+#[serde(untagged)]
+pub enum WaitFor {
+    Text { text: String },
+    Delay { delay: u64 },
 }
 
 #[derive(Debug, Deserialize)]

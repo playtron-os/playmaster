@@ -45,4 +45,6 @@ tests:
       - tap:
           text: "Sign In"
       - wait_for:
+          delay: 1000
+      - match:
           text: "Invalid credentials"

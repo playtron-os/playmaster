@@ -1,7 +1,7 @@
 use std::{
     fs,
     path::{Path, PathBuf},
-    process::{self, Command},
+    process,
 };
 
 use tracing::{error, info};
@@ -11,7 +11,7 @@ use crate::{
     models::{
         args::AppArgs,
         config::{Config, ProjectType},
-        feature_test::{self, FeatureTest, Step},
+        feature_test::{self, FeatureTest, Step, WaitFor},
     },
     utils::{
         dir::DirUtils,
@@ -309,10 +309,16 @@ impl FeatureTest {
 impl Step {
     pub fn to_dart_code(&self) -> String {
         match self {
-            Step::WaitFor { wait_for } => format!(
-                "      await tester.pumpUntilFound(find.text('{}'));\n",
-                wait_for.text
-            ),
+            Step::WaitFor { wait_for } => match wait_for {
+                WaitFor::Text { text } => format!(
+                    "      await tester.pumpUntilFound(find.text('{}'));\n",
+                    text
+                ),
+                WaitFor::Delay { delay } => format!(
+                    "      await tester.pump(Duration(milliseconds: {}));\n",
+                    delay
+                ),
+            },
             Step::Tap { tap } => match &tap.target {
                 feature_test::Target::Placeholder { placeholder } => format!(
                     "      await tester.tap(find.byPlaceholder('{}'));\n",

@@ -32,7 +32,8 @@ void main() {
       await tester.enterText(find.byPlaceholder('Email'), 'qa@playtron.one');
       await tester.enterText(find.byPlaceholder('Password'), 'password');
       await tester.tap(find.text('Sign In'));
-      await tester.pumpUntilFound(find.text('Invalid credentials'));
+      await tester.pump(Duration(milliseconds: 1000));
+      expect(find.text('Invalid credentials'), findsOneWidget);
     });
   });
 }
