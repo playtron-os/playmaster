@@ -580,6 +580,29 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3b3cff922bd51709b605d9ead9aa71031d81447142d828eb4a6eba76fe619f9b"
 
 [[package]]
+name = "playmaster"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "clap",
+ "dirs",
+ "indicatif",
+ "inquire",
+ "lazy_static",
+ "prctl",
+ "regex",
+ "schemars",
+ "semver",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "shlex",
+ "tracing",
+ "tracing-subscriber",
+ "which",
+]
+
+[[package]]
 name = "portable-atomic"
 version = "1.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -854,29 +877,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b2a4719bff48cee6b39d12c020eeb490953ad2443b7055bd0b21fca26bd8c28b"
 dependencies = [
  "libc",
-]
-
-[[package]]
-name = "simple_test_controller"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "clap",
- "dirs",
- "indicatif",
- "inquire",
- "lazy_static",
- "prctl",
- "regex",
- "schemars",
- "semver",
- "serde",
- "serde_json",
- "serde_yaml",
- "shlex",
- "tracing",
- "tracing-subscriber",
- "which",
 ]
 
 [[package]]

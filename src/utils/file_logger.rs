@@ -13,7 +13,7 @@ pub struct FileLogger {
 impl FileLogger {
     pub fn new(file_name: &str) -> Self {
         let mut log_dir = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
-        log_dir.push(".local/share/simple_test_controller/logs");
+        log_dir.push(".local/share/playmaster/logs");
 
         if let Err(err) = create_dir_all(&log_dir) {
             error!("Failed to create log directory: {}", err);
