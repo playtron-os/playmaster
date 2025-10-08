@@ -1,5 +1,6 @@
 use std::{collections::HashMap, fs};
 
+use schemars::JsonSchema;
 use serde::Deserialize;
 
 use crate::{
@@ -10,14 +11,14 @@ use crate::{
     },
 };
 
-#[derive(Debug, Deserialize, PartialEq, Clone)]
+#[derive(Debug, Deserialize, PartialEq, Clone, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum ProjectType {
     Flutter,
 }
 
 /// Configuration structure for the test controller application.
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, JsonSchema)]
 pub struct Config {
     pub project_type: ProjectType,
     pub dependencies: Vec<Dependency>,
@@ -32,14 +33,14 @@ impl Config {
     }
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, JsonSchema)]
 pub struct Dependency {
     pub name: String,
     pub min_version: String,
     pub version_command: String,
 }
 
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Deserialize, Clone, JsonSchema)]
 pub struct HookConfig {
     pub name: String,
     pub hook_type: HookType,

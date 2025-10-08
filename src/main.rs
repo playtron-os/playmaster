@@ -5,6 +5,7 @@ use crate::{
     code_gen::code_gen::CodeGen,
     code_run::code_run::CodeRun,
     models::{args::AppArgs, config::Config},
+    schemas::schema_gen::SchemaGen,
     utils::{errors::EmptyResult, logger::LoggerUtils},
 };
 
@@ -14,6 +15,7 @@ mod hooks;
 #[cfg(target_os = "linux")]
 mod linux;
 mod models;
+mod schemas;
 mod utils;
 
 fn main() -> EmptyResult {
@@ -40,6 +42,10 @@ fn main() -> EmptyResult {
         models::args::Command::Gen {} => {
             let code_gen = CodeGen::new(args, config);
             code_gen.execute()?;
+        }
+        models::args::Command::Schema {} => {
+            let schema_gen = SchemaGen::new();
+            schema_gen.execute()?;
         }
     }
 

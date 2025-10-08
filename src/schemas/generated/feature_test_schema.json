@@ -1,0 +1,237 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "FeatureTest",
+  "type": "object",
+  "properties": {
+    "description": {
+      "type": "string"
+    },
+    "name": {
+      "type": "string"
+    },
+    "tests": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/TestCase"
+      }
+    }
+  },
+  "required": [
+    "name",
+    "description",
+    "tests"
+  ],
+  "$defs": {
+    "Match": {
+      "type": "object",
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "text"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "screenshot": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "screenshot"
+          ]
+        }
+      ]
+    },
+    "ProgressWidgetType": {
+      "type": "string",
+      "enum": [
+        "linear",
+        "radial"
+      ]
+    },
+    "Step": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "wait_for": {
+              "$ref": "#/$defs/WaitFor"
+            }
+          },
+          "required": [
+            "wait_for"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "tap": {
+              "$ref": "#/$defs/Tap"
+            }
+          },
+          "required": [
+            "tap"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "$ref": "#/$defs/TypeAction"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "match": {
+              "$ref": "#/$defs/Match"
+            }
+          },
+          "required": [
+            "match"
+          ]
+        }
+      ]
+    },
+    "Tap": {
+      "type": "object",
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "text"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "placeholder": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "placeholder"
+          ]
+        }
+      ]
+    },
+    "Target": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "text"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "placeholder": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "placeholder"
+          ]
+        }
+      ]
+    },
+    "TestCase": {
+      "type": "object",
+      "properties": {
+        "description": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "steps": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Step"
+          }
+        }
+      },
+      "required": [
+        "name",
+        "description",
+        "steps"
+      ]
+    },
+    "TypeAction": {
+      "type": "object",
+      "properties": {
+        "by": {
+          "$ref": "#/$defs/Target"
+        },
+        "value": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "by",
+        "value"
+      ]
+    },
+    "WaitFor": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "text"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "delay": {
+              "type": "integer",
+              "format": "uint64",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "delay"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "progress": {
+              "$ref": "#/$defs/ProgressWidgetType"
+            }
+          },
+          "required": [
+            "progress"
+          ]
+        }
+      ]
+    }
+  }
+}

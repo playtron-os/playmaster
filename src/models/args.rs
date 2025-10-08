@@ -11,6 +11,9 @@ pub enum Command {
     /// Generate Dart integration tests from YAML files
     Gen,
 
+    /// Generate JSON schema for the YAML files
+    Schema,
+
     /// Run tests in either local or remote mode
     Run {
         /// Mode to run the controller in

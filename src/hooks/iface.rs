@@ -1,3 +1,4 @@
+use schemars::JsonSchema;
 use serde::Deserialize;
 
 use crate::{
@@ -13,7 +14,7 @@ use crate::{
 /// BeforeTest: For actions to be performed before each individual test.
 /// AfterTest: For actions to be performed after each individual test.
 /// AfterAll: For actions to be performed after all tests have completed.
-#[derive(PartialEq, Eq, Clone, Copy, Debug, Deserialize)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug, Deserialize, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum HookType {
     Connect,
