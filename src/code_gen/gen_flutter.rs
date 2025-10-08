@@ -267,19 +267,13 @@ extension FinderExtensions on CommonFinders {
         // Import each generated test file
         for feature in features {
             let import_name = feature.name.to_lowercase().replace(' ', "_") + "_test.dart";
-            let alias = feature
-                .name
-                .to_lowercase()
-                .replace([' ', '-'], "_");
+            let alias = feature.name.to_lowercase().replace([' ', '-'], "_");
             content.push_str(&format!("import '{import_name}' as {alias};\n"));
         }
 
         content.push_str("\nvoid main() {\n");
         for feature in features {
-            let alias = feature
-                .name
-                .to_lowercase()
-                .replace([' ', '-'], "_");
+            let alias = feature.name.to_lowercase().replace([' ', '-'], "_");
             content.push_str(&format!("  {alias}.main();\n"));
         }
         content.push_str("}\n");
