@@ -1,5 +1,6 @@
 // GENERATED FILE - DO NOT EDIT
 import 'package:flutter_test/flutter_test.dart';
+import 'package:flutter/material.dart';
 import 'package:integration_test/integration_test.dart';
 import 'package:sample_app/main.dart' as app;
 
@@ -18,8 +19,10 @@ void main() {
       await tester.enterText(find.byPlaceholder('Email'), 'qa@test.com');
       await tester.enterText(find.byPlaceholder('Password'), 'password123');
       await tester.tap(find.text('Sign In'));
+      await tester.pumpUntilProgressCompleted(
+        find.byType(LinearProgressIndicator),
+      );
       await tester.pumpUntilFound(find.text('Welcome'));
-      expect(find.text('Welcome'), findsOneWidget);
       await tester.compareScreenshot('screenshot_welcome');
     });
 

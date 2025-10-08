@@ -2,8 +2,8 @@
 import 'dart:io';
 import 'dart:typed_data';
 
-import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:screenshot/screenshot.dart';
 import 'package:image/image.dart' as img;
@@ -37,6 +37,61 @@ extension WidgetTesterExtensions on WidgetTester {
     }
     throw Exception(
       'Widget still visible after ${timeout.inSeconds}s: $finder',
+    );
+  }
+
+  Future<void> pumpUntilProgressCompleted(
+    Finder finder, {
+    Duration timeout = const Duration(seconds: 10),
+    Duration step = const Duration(milliseconds: 100),
+  }) async {
+    var endTime = DateTime.now().add(timeout);
+    final lastValueByWidget = <Widget, double>{};
+    while (DateTime.now().isBefore(endTime)) {
+      await pump(step);
+      final progressWidgets = widgetList(finder);
+      if (progressWidgets.isEmpty) {
+        // No progress widget found, consider it completed
+        return;
+      }
+      bool allCompleted = true;
+      for (final widget in progressWidgets) {
+        if (widget is LinearProgressIndicator) {
+          final value = widget.value;
+
+          if (value != null && value < 1.0) {
+            if (lastValueByWidget.containsKey(widget) &&
+                lastValueByWidget[widget]! != value) {
+              // Progress value changed, reset timeout
+              endTime = DateTime.now().add(timeout);
+            }
+
+            allCompleted = false;
+            lastValueByWidget[widget] = value;
+            break;
+          }
+        } else if (widget is CircularProgressIndicator) {
+          final value = widget.value;
+
+          if (value != null && value < 1.0) {
+            if (lastValueByWidget.containsKey(widget) &&
+                lastValueByWidget[widget]! != value) {
+              // Progress value changed, reset timeout
+              endTime = DateTime.now().add(timeout);
+            }
+
+            allCompleted = false;
+            lastValueByWidget[widget] = value;
+            break;
+          }
+        } else {
+          throw Exception('Unsupported progress widget: ${widget.runtimeType}');
+        }
+      }
+      if (allCompleted) return;
+    }
+    throw Exception(
+      'Progress not completed within ${timeout.inSeconds}s: $finder',
     );
   }
 

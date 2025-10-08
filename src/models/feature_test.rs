@@ -32,10 +32,18 @@ pub enum Step {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ProgressWidgetType {
+    Linear,
+    Radial,
+}
+
+#[derive(Debug, Deserialize)]
 #[serde(untagged)]
 pub enum WaitFor {
     Text { text: String },
     Delay { delay: u64 },
+    Progress { progress: ProgressWidgetType },
 }
 
 #[derive(Debug, Deserialize)]

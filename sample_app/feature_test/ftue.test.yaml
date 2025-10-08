@@ -21,8 +21,8 @@ tests:
       - tap:
           text: "Sign In"
       - wait_for:
-          text: "Welcome"
-      - match:
+          progress: linear
+      - wait_for:
           text: "Welcome"
       - match:
           screenshot: "screenshot_welcome"
