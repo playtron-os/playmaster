@@ -81,7 +81,7 @@ pub enum MatchTarget {
 
 impl FeatureTest {
     pub fn all_from_curr_dir() -> ResultWithError<Vec<Self>> {
-        let config_path = DirUtils::exec_dir()?.join("feature_test");
+        let config_path = DirUtils::curr_dir()?.join("feature_test");
 
         if !config_path.exists() {
             return Err("test_features directory not found".into());

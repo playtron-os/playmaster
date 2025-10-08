@@ -17,14 +17,6 @@ pub enum ProjectType {
     Flutter,
 }
 
-impl ProjectType {
-    pub fn to_string(&self) -> String {
-        match self {
-            ProjectType::Flutter => "flutter".to_string(),
-        }
-    }
-}
-
 /// Configuration structure for the test controller application.
 #[derive(Debug, Deserialize, Clone, JsonSchema)]
 pub struct Config {
@@ -35,7 +27,7 @@ pub struct Config {
 
 impl Config {
     pub fn from_curr_dir() -> ResultWithError<Self> {
-        let config_path = DirUtils::exec_dir()?.join("test_controller.yaml");
+        let config_path = DirUtils::curr_dir()?.join("playmaster.yaml");
         let content = fs::read_to_string(config_path).auto_err("Could not read config file")?;
         serde_yaml::from_str(&content).auto_err("Invalid config format")
     }

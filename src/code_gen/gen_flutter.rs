@@ -48,7 +48,7 @@ impl CodeGenTrait for GenFlutter {
 
 impl GenFlutter {
     pub fn from_exec_dir(args: AppArgs, config: Config) -> ResultWithError<Self> {
-        let cwd = DirUtils::exec_dir()?;
+        let cwd = DirUtils::curr_dir()?;
         let out_dir = cwd.join("integration_test/generated");
         fs::create_dir_all(&out_dir)?;
 

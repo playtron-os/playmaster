@@ -55,7 +55,7 @@ impl RunFlutter {
     }
 
     fn execute_tests(&self, spinner: &ProgressBar, features: &[FeatureTest]) -> EmptyResult {
-        let exec_dir = utils::dir::DirUtils::exec_dir()?;
+        let exec_dir = utils::dir::DirUtils::curr_dir()?;
         let mut child = self.spawn_flutter_command(exec_dir)?;
 
         let stdout = child.stdout.take().unwrap();

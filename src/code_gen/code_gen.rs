@@ -42,7 +42,7 @@ impl CodeGen {
             return Ok(());
         }
 
-        let cwd = DirUtils::exec_dir()?;
+        let cwd = DirUtils::curr_dir()?;
         let out_dir = cwd.join("integration_test/generated");
 
         _ = fs::remove_dir_all(&out_dir);
