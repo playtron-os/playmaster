@@ -21,7 +21,7 @@ void main() {
     expect(passwordField, findsOneWidget);
     expect(signInButton, findsOneWidget);
 
-    await tester.enterText(emailField, 'qa@playtron.one');
+    await tester.enterText(emailField, 'qa@test.com');
     await tester.enterText(passwordField, 'password123');
 
     // Tap Sign In

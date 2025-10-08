@@ -15,7 +15,7 @@ void main() {
 
       await tester.pumpUntilFound(find.text('Login'));
       await tester.tap(find.byPlaceholder('Email'));
-      await tester.enterText(find.byPlaceholder('Email'), 'qa@playtron.one');
+      await tester.enterText(find.byPlaceholder('Email'), 'qa@test.com');
       await tester.enterText(find.byPlaceholder('Password'), 'password123');
       await tester.tap(find.text('Sign In'));
       await tester.pumpUntilFound(find.text('Welcome'));
@@ -29,7 +29,7 @@ void main() {
 
       await tester.pumpUntilFound(find.text('Login'));
       await tester.tap(find.byPlaceholder('Email'));
-      await tester.enterText(find.byPlaceholder('Email'), 'qa@playtron.one');
+      await tester.enterText(find.byPlaceholder('Email'), 'qa@test.com');
       await tester.enterText(find.byPlaceholder('Password'), 'password');
       await tester.tap(find.text('Sign In'));
       await tester.pump(Duration(milliseconds: 1000));

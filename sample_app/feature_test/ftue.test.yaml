@@ -13,7 +13,7 @@ tests:
       - type:
           by:
             placeholder: "Email"
-          value: "qa@playtron.one"
+          value: "qa@test.com"
       - type:
           by:
             placeholder: "Password"
@@ -37,7 +37,7 @@ tests:
       - type:
           by:
             placeholder: "Email"
-          value: "qa@playtron.one"
+          value: "qa@test.com"
       - type:
           by:
             placeholder: "Password"

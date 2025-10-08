@@ -29,16 +29,42 @@ class LoginScreen extends StatefulWidget {
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends State<LoginScreen>
+    with SingleTickerProviderStateMixin {
   final GlobalKey _repaintKey = GlobalKey();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   bool _loggedIn = false;
+  bool _isLoading = false;
+  late AnimationController _progressController;
+
+  @override
+  void initState() {
+    super.initState();
+    _progressController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 3),
+    );
+  }
+
+  @override
+  void dispose() {
+    _progressController.dispose();
+    _emailController.dispose();
+    _passwordController.dispose();
+    super.dispose();
+  }
 
   void _login() {
-    if (_emailController.text == "qa@playtron.one" &&
+    if (_emailController.text == "qa@test.com" &&
         _passwordController.text == "password123") {
-      setState(() => _loggedIn = true);
+      setState(() => _isLoading = true);
+      _progressController.forward(from: 0.0).then((_) {
+        setState(() {
+          _isLoading = false;
+          _loggedIn = true;
+        });
+      });
     } else {
       ScaffoldMessenger.of(
         context,
@@ -92,6 +118,29 @@ class _LoginScreenState extends State<LoginScreen> {
                         child: const Text('Capture Screenshot'),
                       ),
                     ],
+                  )
+                  : _isLoading
+                  ? Padding(
+                    padding: const EdgeInsets.all(40.0),
+                    child: AnimatedBuilder(
+                      animation: _progressController,
+                      builder: (context, child) {
+                        return Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            LinearProgressIndicator(
+                              value: _progressController.value,
+                              minHeight: 8,
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              '${(_progressController.value * 100).toInt()}%',
+                              style: Theme.of(context).textTheme.titleMedium,
+                            ),
+                          ],
+                        );
+                      },
+                    ),
                   )
                   : Column(
                     mainAxisAlignment: MainAxisAlignment.center,
