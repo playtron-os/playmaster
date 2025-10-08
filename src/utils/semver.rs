@@ -12,7 +12,7 @@ pub struct SemverUtils {}
 
 impl SemverUtils {
     pub fn is_version_greater_or_equal(min_version: &str, input: &str) -> ResultWithError<bool> {
-        if let Some(capt) = VERSION_RE.find(&input) {
+        if let Some(capt) = VERSION_RE.find(input) {
             let found_version_str = capt.as_str();
             let found_version = Version::parse(found_version_str)
                 .auto_err(&format!("Failed to parse version: {}", found_version_str))?;

@@ -270,8 +270,7 @@ extension FinderExtensions on CommonFinders {
             let alias = feature
                 .name
                 .to_lowercase()
-                .replace(' ', "_")
-                .replace('-', "_");
+                .replace([' ', '-'], "_");
             content.push_str(&format!("import '{import_name}' as {alias};\n"));
         }
 
@@ -280,8 +279,7 @@ extension FinderExtensions on CommonFinders {
             let alias = feature
                 .name
                 .to_lowercase()
-                .replace(' ', "_")
-                .replace('-', "_");
+                .replace([' ', '-'], "_");
             content.push_str(&format!("  {alias}.main();\n"));
         }
         content.push_str("}\n");
@@ -375,12 +373,8 @@ impl Step {
                     delay
                 ),
                 WaitFor::Progress { progress } => match progress {
-                    feature_test::ProgressWidgetType::Linear => format!(
-                        "      await tester.pumpUntilProgressCompleted(find.byType(LinearProgressIndicator));\n"
-                    ),
-                    feature_test::ProgressWidgetType::Radial => format!(
-                        "      await tester.pumpUntilProgressCompleted(find.byType(CircularProgressIndicator));\n"
-                    ),
+                    feature_test::ProgressWidgetType::Linear => "      await tester.pumpUntilProgressCompleted(find.byType(LinearProgressIndicator));\n".to_string(),
+                    feature_test::ProgressWidgetType::Radial => "      await tester.pumpUntilProgressCompleted(find.byType(CircularProgressIndicator));\n".to_string(),
                 },
             },
             Step::Tap { tap } => match &tap.target {

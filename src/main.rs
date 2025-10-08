@@ -2,8 +2,8 @@ use clap::Parser as _;
 use tracing::info;
 
 use crate::{
-    code_gen::code_gen::CodeGen,
-    code_run::code_run::CodeRun,
+    code_gen::r#gen::CodeGen,
+    code_run::run::CodeRun,
     models::{args::AppArgs, config::Config},
     schemas::schema_gen::SchemaGen,
     utils::{errors::EmptyResult, logger::LoggerUtils},
@@ -39,11 +39,11 @@ fn main() -> EmptyResult {
             let run = CodeRun::new(args, config);
             run.execute()?;
         }
-        models::args::Command::Gen {} => {
+        models::args::Command::Gen => {
             let code_gen = CodeGen::new(args, config);
             code_gen.execute()?;
         }
-        models::args::Command::Schema {} => {
+        models::args::Command::Schema => {
             let schema_gen = SchemaGen::new();
             schema_gen.execute()?;
         }

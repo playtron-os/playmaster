@@ -36,11 +36,9 @@ impl Hook for HookConnect {
     }
 
     fn run(&self, args: &AppArgs, _config: &Config) -> EmptyResult {
-        if let models::args::Command::Run { mode } = &args.command {
-            if let Some(mode) = mode {
-                info!("Connection mode specified via command line: {:?}", mode);
-                return Ok(());
-            }
+        if let models::args::Command::Run { mode: Some(mode) } = &args.command {
+            info!("Connection mode specified via command line: {:?}", mode);
+            return Ok(());
         }
 
         if !self.prompt_for_remote_conn()? {
