@@ -17,6 +17,14 @@ pub enum ProjectType {
     Flutter,
 }
 
+impl ProjectType {
+    pub fn to_string(&self) -> String {
+        match self {
+            ProjectType::Flutter => "flutter".to_string(),
+        }
+    }
+}
+
 /// Configuration structure for the test controller application.
 #[derive(Debug, Deserialize, Clone, JsonSchema)]
 pub struct Config {
