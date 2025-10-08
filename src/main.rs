@@ -32,14 +32,14 @@ fn main() -> EmptyResult {
     let version = env!("CARGO_PKG_VERSION");
     info!("🔧 Simple Test Controller, Version: {version}");
 
-    let config = Config::from_curr_dir()?;
-
     match args.command {
         models::args::Command::Run { .. } => {
+            let config = Config::from_curr_dir()?;
             let run = CodeRun::new(args, config);
             run.execute()?;
         }
         models::args::Command::Gen => {
+            let config = Config::from_curr_dir()?;
             let code_gen = CodeGen::new(args, config);
             code_gen.execute()?;
         }
