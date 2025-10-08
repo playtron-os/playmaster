@@ -213,28 +213,6 @@ playmaster/
    playmaster run --mode local
    ```
 
-## Schema Validation
-
-For the best development experience, configure your IDE to use the generated JSON schemas for validation and autocomplete:
-
-### VS Code
-
-Add to your `.vscode/settings.json`:
-
-```json
-{
-  "yaml.schemas": {
-    "src/schemas/generated/config.json": "playmaster.yaml",
-    "src/schemas/generated/feature_test_schema.json": "feature_test/*.test.yaml"
-  }
-}
-```
-
-### IntelliJ/WebStorm
-
-1. Go to Settings → Languages & Frameworks → Schemas and DTDs → JSON Schema Mappings
-2. Add schema mappings pointing to the generated JSON schemas
-
 ## Roadmap / TODO
 
 The following features are planned but not yet implemented:

@@ -1,3 +1,5 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/playtron-os/playmaster/refs/heads/master/src/schemas/generated/feature_test_schema.json
+
 name: First Time User Experience
 description: >
   Covers the FTUE flow, which is just the login for now
