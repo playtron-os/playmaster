@@ -235,6 +235,48 @@ Add to your `.vscode/settings.json`:
 1. Go to Settings → Languages & Frameworks → Schemas and DTDs → JSON Schema Mappings
 2. Add schema mappings pointing to the generated JSON schemas
 
+## Roadmap / TODO
+
+The following features are planned but not yet implemented:
+
+### Remote Test Execution
+- **Remote Device Support**: Full implementation of remote test execution on devices (e.g., GameOS devices)
+- **Remote Connection Management**: Automated SSH/network connection handling for remote targets
+- **Device Discovery**: Automatic discovery of test devices on LAN
+
+### Test Orchestration
+- **Multi-Resolution Testing**: Run test suites across multiple screen resolutions automatically
+- **Parallel Test Execution**: Run tests concurrently across multiple devices/resolutions
+- **LAN Test Orchestration**: Coordinate test execution across multiple machines on local network
+- **Cloud Orchestration** (Future): Cloud-based test coordination and scheduling
+
+### Visual Testing & Reporting
+- **Screenshot Comparison**: Pixel-perfect screenshot matching for design validation
+- **Multi-Resolution Screenshots**: Capture and compare screenshots across different resolutions
+- **Golden File Management**: Tools for managing and updating golden screenshot files
+- **Test Reports**: Generate comprehensive HTML/JSON test reports with:
+  - Test execution results
+  - Screenshot diffs and comparisons
+  - Performance metrics
+  - Historical trend analysis
+
+### Developer Experience
+- **Service Management Hooks**: Pre-test hooks for ensuring required services (e.g., playserve) are running
+- **Dependency Targeting**: Specify and validate specific versions of dependencies for test runs
+- **Better Error Messages**: Enhanced error reporting and debugging information
+- **Test Replay/Debug Mode**: Step-through debugging for failed tests
+
+### Framework Support
+- **Additional Framework Support**: Extend beyond Flutter (e.g., React Native, native mobile apps)
+- **Custom Action Plugins**: Extensible action system for framework-specific test steps
+
+### Configuration
+- **Environment Profiles**: Named configuration profiles for different test environments
+- **Test Tagging**: Tag tests for selective execution (smoke, regression, etc.)
+- **Retry Logic**: Configurable retry strategies for flaky tests
+
+Contributions in any of these areas are welcome! See the Contributing section below for guidelines.
+
 ## Contributing
 
 Contributions are welcome! Please ensure:
