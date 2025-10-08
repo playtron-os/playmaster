@@ -265,7 +265,7 @@ Contributions are welcome! Please ensure:
 
 ## License
 
-[Add your license information here]
+[Apache-2.0 license](LICENSE)
 
 ## Support
 
