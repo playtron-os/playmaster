@@ -100,16 +100,16 @@ impl FeatureTest {
             let path = entry.path();
 
             // Only process .yaml or .yml files
-            if let Some(ext) = path.extension().and_then(|s| s.to_str()) {
-                if ext.eq_ignore_ascii_case("yaml") || ext.eq_ignore_ascii_case("yml") {
-                    let content = fs::read_to_string(&path)
-                        .auto_err(&format!("Failed to read file: {:?}", path))?;
+            if let Some(ext) = path.extension().and_then(|s| s.to_str())
+                && (ext.eq_ignore_ascii_case("yaml") || ext.eq_ignore_ascii_case("yml"))
+            {
+                let content = fs::read_to_string(&path)
+                    .auto_err(&format!("Failed to read file: {:?}", path))?;
 
-                    let feature: FeatureTest = serde_yaml::from_str(&content)
-                        .auto_err(&format!("Failed to parse YAML: {:?}", path))?;
+                let feature: FeatureTest = serde_yaml::from_str(&content)
+                    .auto_err(&format!("Failed to parse YAML: {:?}", path))?;
 
-                    features.push(feature);
-                }
+                features.push(feature);
             }
         }
 
