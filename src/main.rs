@@ -30,7 +30,7 @@ fn main() -> EmptyResult {
     LoggerUtils::init();
 
     let version = env!("CARGO_PKG_VERSION");
-    info!("🔧 Simple Test Controller, Version: {version}");
+    info!("🔧 PlayMaster, Version: {version}");
 
     match args.command {
         models::args::Command::Run { .. } => {

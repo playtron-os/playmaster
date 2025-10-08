@@ -27,11 +27,11 @@ pub enum Command {
 
 #[derive(Parser, Debug, Clone)]
 #[command(
-    name = "Simple Test Controller",
+    name = "PlayMaster",
     version,
     about = "A simple test controller application to execute or generate Flutter integration tests.",
     long_about = r#"
-The Simple Test Controller is a command-line tool designed to help automate and
+The PlayMaster is a command-line tool designed to help automate and
 manage test execution across different environments or generate Dart test files
 from YAML-based feature definitions.
 

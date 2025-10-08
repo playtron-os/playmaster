@@ -1,4 +1,4 @@
-# Simple Test Controller
+# PlayMaster
 
 A command-line tool for automating integration tests through declarative YAML configuration. Define your test flows in human-readable YAML files and execute them across local or remote environments. Currently supports Flutter with an extensible architecture for additional frameworks.
 
