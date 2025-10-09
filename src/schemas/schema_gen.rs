@@ -16,8 +16,8 @@ impl SchemaGen {
         self.generate_single::<crate::models::feature_test::FeatureTest>(
             "feature_test_schema.json",
         )?;
-        self.generate_single::<crate::models::config::Config>("config.json")?;
-        self.generate_single::<crate::models::vars::Vars>("vars.json")?;
+        self.generate_single::<crate::models::config::Config>("config_schema.json")?;
+        self.generate_single::<crate::models::vars::Vars>("vars_schema.json")?;
         Ok(())
     }
 

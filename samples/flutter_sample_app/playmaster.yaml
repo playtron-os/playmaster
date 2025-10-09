@@ -1,4 +1,4 @@
-# yaml-language-server: $schema=https://raw.githubusercontent.com/playtron-os/playmaster/refs/heads/master/src/schemas/generated/config.json
+# yaml-language-server: $schema=https://raw.githubusercontent.com/playtron-os/playmaster/refs/heads/master/src/schemas/generated/config_schema.json
 
 project_type: flutter
 

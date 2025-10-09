@@ -34,7 +34,9 @@ impl GenFlutter {
 
             dart.push_str(&format!("class {} {{\n", class_name));
 
-            for (key, value) in vars.0 {
+            let mut vars_vec: Vec<_> = vars.0.iter().collect();
+            vars_vec.sort_by_key(|(key, _)| *key);
+            for (key, value) in vars_vec {
                 dart.push_str(&format!("  static const {} = '{}';\n", key, value));
             }
 

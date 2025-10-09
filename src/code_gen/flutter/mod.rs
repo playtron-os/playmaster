@@ -82,7 +82,9 @@ impl FeatureTest {
 
         // Vars
         if !self.vars.is_empty() {
-            for (key, value) in &self.vars {
+            let mut vars: Vec<_> = self.vars.iter().collect();
+            vars.sort_by_key(|(key, _)| *key);
+            for (key, value) in vars {
                 out.push_str(&format!("  const {} = '{}';\n", key, value));
             }
             out.push_str("\n\n");
