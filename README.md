@@ -110,10 +110,55 @@ Hooks execute at different lifecycle stages:
 
 Create YAML test files in the `feature_test/` directory:
 
+
+## Variables
+
+PlayMaster supports two sources of variables for your feature tests:
+
+- **Global vars files**: Any `*.vars.yaml` inside `feature_test/`
+- **Local vars**: A `vars:` section at the top of each `*.test.yaml`
+
+These variables are simple flat key/value strings and can be referenced in test steps using the `${...}` syntax.
+
+### 1) Global vars files (`*.vars.yaml`)
+
+- Location: place them under `feature_test/`
+- File name format: `<Name>.vars.yaml`
+- At codegen time (`playmaster gen`), a Dart class is generated for each file in `integration_test/generated/vars.dart`.
+  - Class name = `<Name>` converted to PascalCase
+  - Each key becomes a `static const` string on that class
+
+Example file `feature_test/common.vars.yaml` (see sample at `samples/flutter_sample_app/feature_test/common.vars.yaml`):
+
+```yaml
+validEmail: "qa@test.com"
+```
+
+This produces a Dart class similar to:
+
+```dart
+// in integration_test/generated/vars.dart
+class Common {
+  static const validEmail = 'qa@test.com';
+}
+```
+
+You can then reference it in tests as `${Common.validEmail}`.
+
+### 2) Local vars in a test file
+
+Define a `vars:` mapping at the top of your `*.test.yaml`. Keys and values must be strings.
+
+Example file `feature_test/ftue.test.yaml` (excerpt; see sample at `samples/flutter_sample_app/feature_test/ftue.test.yaml`):
+
 ```yaml
 name: First Time User Experience
 description: >
   Covers the FTUE flow, which is just the login for now
+
+vars:
+  validPassword: "password123"
+  invalidPassword: "wrongpassword"
 
 tests:
   - name: Successful Login
@@ -126,11 +171,11 @@ tests:
       - type:
           by:
             placeholder: "Email"
-          value: "qa@test.com"
+          value: "${Common.validEmail}"   # from common.vars.yaml
       - type:
           by:
             placeholder: "Password"
-          value: "password123"
+          value: "${validPassword}"   # from this file
       - tap:
           text: "Sign In"
       - wait_for:
@@ -162,6 +207,12 @@ tests:
 - **match**
   - `text: "string"` - Assert text exists
   - `screenshot: "name"` - Compare screenshot against golden file
+
+### Interpolation rules
+
+- Use `${Common.key}` to read from a global vars file named `common.vars.yaml` (class `Common`).
+- Use `${localKey}` to read from the local `vars:` block in the same `.test.yaml`.
+- Vars are plain strings (no nested objects, arrays, or expressions).
 
 ## Project Structure
 
