@@ -1,19 +1,22 @@
-use std::{fs, path::PathBuf};
+use std::collections::HashMap;
 
 use schemars::JsonSchema;
 use serde::Deserialize;
 
 use crate::utils::{
-    dir::DirUtils,
-    errors::{ResultTrait, ResultWithError},
+    dir::{DirUtils, YamlType},
+    errors::ResultWithError,
 };
 
 #[allow(dead_code)]
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct FeatureTest {
     pub name: String,
+    #[serde(default)]
     pub description: String,
     pub tests: Vec<TestCase>,
+    #[serde(default)]
+    pub vars: HashMap<String, String>,
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -81,38 +84,7 @@ pub enum MatchTarget {
 
 impl FeatureTest {
     pub fn all_from_curr_dir() -> ResultWithError<Vec<Self>> {
-        let config_path = DirUtils::curr_dir()?.join("feature_test");
-
-        if !config_path.exists() {
-            return Err("test_features directory not found".into());
-        }
-
-        let feature_tests = Self::find_feature_tests(&config_path)?;
-        Ok(feature_tests)
-    }
-
-    fn find_feature_tests(config_path: &PathBuf) -> ResultWithError<Vec<Self>> {
-        let mut features = Vec::new();
-
-        // Iterate over all YAML files
-        for entry in fs::read_dir(config_path).auto_err("Could not read test_features directory")? {
-            let entry = entry.auto_err("Could not read directory entry")?;
-            let path = entry.path();
-
-            // Only process .yaml or .yml files
-            if let Some(ext) = path.extension().and_then(|s| s.to_str())
-                && (ext.eq_ignore_ascii_case("yaml") || ext.eq_ignore_ascii_case("yml"))
-            {
-                let content = fs::read_to_string(&path)
-                    .auto_err(&format!("Failed to read file: {:?}", path))?;
-
-                let feature: FeatureTest = serde_yaml::from_str(&content)
-                    .auto_err(&format!("Failed to parse YAML: {:?}", path))?;
-
-                features.push(feature);
-            }
-        }
-
-        Ok(features)
+        let res = DirUtils::parse_all_from_curr_dir::<Self>(YamlType::FeatureTest)?;
+        Ok(res.into_iter().map(|f| f.content).collect::<Vec<_>>())
     }
 }

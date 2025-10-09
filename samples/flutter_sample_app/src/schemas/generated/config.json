@@ -1,0 +1,109 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Config",
+  "description": "Configuration structure for the test controller application.",
+  "type": "object",
+  "properties": {
+    "dependencies": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/Dependency"
+      }
+    },
+    "hooks": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/HookConfig"
+      }
+    },
+    "project_type": {
+      "$ref": "#/$defs/ProjectType"
+    }
+  },
+  "required": [
+    "project_type",
+    "dependencies",
+    "hooks"
+  ],
+  "$defs": {
+    "Dependency": {
+      "type": "object",
+      "properties": {
+        "min_version": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "version_command": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "min_version",
+        "version_command"
+      ]
+    },
+    "HookConfig": {
+      "type": "object",
+      "properties": {
+        "args": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "items": {
+            "type": "string"
+          }
+        },
+        "async": {
+          "type": "boolean"
+        },
+        "command": {
+          "type": "string"
+        },
+        "env": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "additionalProperties": {
+            "type": "string"
+          }
+        },
+        "hook_type": {
+          "$ref": "#/$defs/HookType"
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "hook_type",
+        "async",
+        "command"
+      ]
+    },
+    "HookType": {
+      "description": "Defines the types of hooks available in the system.\nConnect: For establishing connections to a remote host if needed.\nVerifySystem: For verifying system prerequisites and dependencies.\nPrepareSystem: For preparing the system before running tests.\nBeforeAll: For actions to be performed before all tests.\nBeforeTest: For actions to be performed before each individual test.\nAfterTest: For actions to be performed after each individual test.\nAfterAll: For actions to be performed after all tests have completed.",
+      "type": "string",
+      "enum": [
+        "connect",
+        "verify_system",
+        "prepare_system",
+        "before_all",
+        "before_test",
+        "after_test",
+        "after_all"
+      ]
+    },
+    "ProjectType": {
+      "type": "string",
+      "enum": [
+        "flutter"
+      ]
+    }
+  }
+}

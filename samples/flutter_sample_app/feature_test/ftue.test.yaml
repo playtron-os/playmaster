@@ -4,6 +4,10 @@ name: First Time User Experience
 description: >
   Covers the FTUE flow, which is just the login for now
 
+vars:
+  validPassword: "password123"
+  invalidPassword: "wrongpassword"
+
 tests:
   - name: Successful Login
     description: Enters the correct username and password and logs in
@@ -15,11 +19,11 @@ tests:
       - type:
           by:
             placeholder: "Email"
-          value: "qa@test.com"
+          value: "${Common.validEmail}"
       - type:
           by:
             placeholder: "Password"
-          value: "password123"
+          value: "${validPassword}"
       - tap:
           text: "Sign In"
       - wait_for:
@@ -39,11 +43,11 @@ tests:
       - type:
           by:
             placeholder: "Email"
-          value: "qa@test.com"
+          value: "${Common.validEmail}"
       - type:
           by:
             placeholder: "Password"
-          value: "password"
+          value: "${invalidPassword}"
       - tap:
           text: "Sign In"
       - wait_for:

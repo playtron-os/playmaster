@@ -1,0 +1,3 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/playtron-os/playmaster/refs/heads/master/src/schemas/generated/vars_schema.json
+
+validEmail: "qa@test.com"

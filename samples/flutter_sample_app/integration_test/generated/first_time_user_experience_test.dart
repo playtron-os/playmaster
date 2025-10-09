@@ -5,9 +5,13 @@ import 'package:integration_test/integration_test.dart';
 import 'package:sample_app/main.dart' as app;
 
 import 'helpers.dart';
+import 'vars.dart';
 
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
+
+  const invalidPassword = 'wrongpassword';
+  const validPassword = 'password123';
 
   group('First Time User Experience', () {
     testWidgets('Successful Login', (tester) async {
@@ -16,8 +20,14 @@ void main() {
 
       await tester.pumpUntilFound(find.text('Login'));
       await tester.tap(find.byPlaceholder('Email'));
-      await tester.enterText(find.byPlaceholder('Email'), 'qa@test.com');
-      await tester.enterText(find.byPlaceholder('Password'), 'password123');
+      await tester.enterText(
+        find.byPlaceholder('Email'),
+        Common.validEmail,
+      );
+      await tester.enterText(
+        find.byPlaceholder('Password'),
+        validPassword,
+      );
       await tester.tap(find.text('Sign In'));
       await tester.pumpUntilProgressCompleted(
         find.byType(LinearProgressIndicator),
@@ -32,8 +42,14 @@ void main() {
 
       await tester.pumpUntilFound(find.text('Login'));
       await tester.tap(find.byPlaceholder('Email'));
-      await tester.enterText(find.byPlaceholder('Email'), 'qa@test.com');
-      await tester.enterText(find.byPlaceholder('Password'), 'password');
+      await tester.enterText(
+        find.byPlaceholder('Email'),
+        Common.validEmail,
+      );
+      await tester.enterText(
+        find.byPlaceholder('Password'),
+        invalidPassword,
+      );
       await tester.tap(find.text('Sign In'));
       await tester.pump(Duration(milliseconds: 1000));
       expect(find.text('Invalid credentials'), findsOneWidget);

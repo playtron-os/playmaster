@@ -3,7 +3,7 @@ use std::fs;
 use tracing::info;
 
 use crate::{
-    code_gen::{gen_flutter::GenFlutter, gen_iface::CodeGenTrait},
+    code_gen::{flutter::GenFlutter, gen_iface::CodeGenTrait},
     models::{args::AppArgs, config::Config, feature_test::FeatureTest},
     utils::{
         dir::DirUtils,
