@@ -22,6 +22,14 @@ pub enum Command {
         /// When in local mode, the controller will run the tests in the local machine
         #[arg(short, long, value_enum)]
         mode: Option<AppMode>,
+
+        /// Auto accept dependency installation prompts
+        #[arg(short, long, default_value_t = false)]
+        yes: bool,
+
+        /// Whether to perform only setup tasks without executing tests
+        #[arg(short, long, default_value_t = false)]
+        setup: bool,
     },
 }
 

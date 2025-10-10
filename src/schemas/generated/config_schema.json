@@ -22,13 +22,22 @@
   },
   "required": [
     "project_type",
-    "dependencies",
-    "hooks"
+    "dependencies"
   ],
   "$defs": {
     "Dependency": {
       "type": "object",
       "properties": {
+        "install": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/InstallSpec"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "min_version": {
           "type": "string"
         },
@@ -97,6 +106,76 @@
         "before_test",
         "after_test",
         "after_all"
+      ]
+    },
+    "InstallSource": {
+      "oneOf": [
+        {
+          "type": "object",
+          "properties": {
+            "repo": {
+              "type": "string"
+            },
+            "token": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string",
+              "const": "bitbucket"
+            }
+          },
+          "required": [
+            "type",
+            "repo",
+            "token"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string",
+              "const": "url"
+            },
+            "url": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "type",
+            "url"
+          ]
+        }
+      ]
+    },
+    "InstallSpec": {
+      "type": "object",
+      "properties": {
+        "source": {
+          "description": "Source information, if left empty will default to DNF install",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/InstallSource"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "tool": {
+          "description": "The tool name (used to find in Bitbucket/GitHub, etc.)",
+          "type": "string"
+        },
+        "version": {
+          "description": "Optional version, e.g. \"1.2.3\"",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "tool"
       ]
     },
     "ProjectType": {

@@ -30,6 +30,11 @@ run:
 	@echo "🚀 Running $(BIN_NAME)..."
 	cd ./samples/flutter_sample_app && cargo run -- run --mode local
 
+# ----- Setup Tasks -----
+setup:
+	@echo "⚙️  Running setup tasks..."
+	cd ./samples/flutter_sample_app && cargo run -- run --mode local --setup
+
 # ----- Install Globally -----
 install:
 	@echo "📦 Installing $(BIN_NAME) globally..."

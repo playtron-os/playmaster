@@ -1,7 +1,10 @@
 pub mod command;
 pub mod dir;
+pub mod downloader_def;
 pub mod errors;
 pub mod file_logger;
 pub mod logger;
+pub mod os;
 pub mod semver;
 pub mod shlex;
+pub mod variables;

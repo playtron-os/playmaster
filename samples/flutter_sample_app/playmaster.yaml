@@ -6,6 +6,12 @@ dependencies:
   - name: flutter
     min_version: "3.29.2"
     version_command: flutter --version | head -n 1 | awk '{print $2}'
+    install:
+      tool: flutter
+      version: "3.29.2"
+      source:
+        type: url
+        url: "https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_{{version}}-stable.tar.xz"
 
 hooks:
   - name: Custom Hook
@@ -14,4 +20,4 @@ hooks:
     args: ["Custom hook could go here"]
     async: true
     env:
-      TEST_ENV: 1
+      TEST_ENV: "1"

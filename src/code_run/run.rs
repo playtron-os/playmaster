@@ -73,6 +73,11 @@ impl CodeRun {
     }
 
     fn run_tests(&self, features: Vec<FeatureTest>) -> EmptyResult {
+        if let Command::Run { setup: true, .. } = self.args.command {
+            info!("Setup flag detected, performing only setup tasks without executing tests.");
+            return Ok(());
+        }
+
         let runners: Vec<Box<dyn code_run::run_iface::CodeRunTrait>> = vec![Box::new(
             code_run::run_flutter::RunFlutter::new(self.args.clone(), self.config.clone()),
         )];
@@ -88,7 +93,7 @@ impl CodeRun {
             )?;
 
         match &self.args.command {
-            Command::Run { mode } => match mode {
+            Command::Run { mode, .. } => match mode {
                 Some(AppMode::Local) | None => self.run_tests_locally(runner, features),
                 Some(AppMode::Remote) => self.run_tests_remotely(runner, features),
             },
