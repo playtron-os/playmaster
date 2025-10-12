@@ -30,6 +30,11 @@ pub enum Command {
         /// Whether to perform only setup tasks without executing tests
         #[arg(short, long, default_value_t = false)]
         setup: bool,
+
+        /// Address of the remote host to connect to in remote mode, such as: user@ip_address:port
+        /// Example: dev@192.168.1.100:22
+        #[arg(short = 'a', long)]
+        remote_addr: Option<String>,
     },
 }
 

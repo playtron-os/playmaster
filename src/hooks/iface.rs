@@ -3,8 +3,12 @@ use serde::Deserialize;
 use std::sync::{Arc, RwLock};
 
 use crate::{
-    models::{app_state::AppState, args::AppArgs, config::Config},
-    utils::errors::EmptyResult,
+    models::{
+        app_state::{AppState, RemoteInfo},
+        args::AppArgs,
+        config::Config,
+    },
+    utils::errors::{EmptyResult, ResultTrait},
 };
 
 /// Defines the types of hooks available in the system.
@@ -45,6 +49,17 @@ pub struct HookContext<'a> {
     pub args: &'a AppArgs,
     pub config: &'a Config,
     pub state: Arc<RwLock<AppState>>,
+}
+
+impl<'a> HookContext<'a> {
+    pub fn initiate_remote(&self, remote: RemoteInfo) -> EmptyResult {
+        let mut state = self
+            .state
+            .write()
+            .auto_err("Failed to acquire write lock")?;
+        state.remote = Some(remote);
+        Ok(())
+    }
 }
 
 /// Trait that all hook implementations must adhere to.
