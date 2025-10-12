@@ -3,18 +3,13 @@ use std::process::Command;
 use tracing::{error, info};
 
 use crate::{
-    hooks::iface::{Hook, HookType},
-    models::{
-        args::AppArgs,
-        config::{Config, HookConfig},
-    },
+    hooks::iface::{Hook, HookContext, HookType},
+    models::config::HookConfig,
     utils::{
         errors::{EmptyResult, ResultTrait},
         file_logger::FileLogger,
     },
 };
-
-/// Custom hook that gets implementation based on yaml config.
 pub struct HookCustom {
     config: HookConfig,
 }
@@ -88,7 +83,7 @@ impl Hook for HookCustom {
         self.config.hook_type
     }
 
-    fn run(&self, _args: &AppArgs, _config: &Config) -> EmptyResult {
+    fn run(&self, _ctx: &HookContext) -> EmptyResult {
         info!("Executing custom hook: {}", self.config.name);
 
         if self.config.is_async {

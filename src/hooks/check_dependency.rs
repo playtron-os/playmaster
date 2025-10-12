@@ -4,10 +4,10 @@ use reqwest::blocking::get;
 use tracing::{error, info};
 
 use crate::{
-    hooks::iface::{Hook, HookType},
+    hooks::iface::{Hook, HookContext, HookType},
     models::{
         args::{AppArgs, Command},
-        config::{Config, Dependency, InstallSource, InstallSpec},
+        config::{Dependency, InstallSource, InstallSpec},
     },
     utils::{
         command::CommandUtils,
@@ -208,14 +208,14 @@ impl Hook for HookCheckDependency {
         HookType::VerifySystem
     }
 
-    fn run(&self, args: &AppArgs, config: &Config) -> EmptyResult {
+    fn run(&self, ctx: &HookContext) -> EmptyResult {
         info!("Checking dependencies...");
 
-        for dep in config.dependencies.iter() {
-            let was_installed = self.validate_dependency(args, dep, true)?;
+        for dep in ctx.config.dependencies.iter() {
+            let was_installed = self.validate_dependency(ctx.args, dep, true)?;
 
             if was_installed {
-                self.validate_dependency(args, dep, false)?;
+                self.validate_dependency(ctx.args, dep, false)?;
             }
         }
 

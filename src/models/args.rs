@@ -1,6 +1,6 @@
 use clap::{Parser, Subcommand, ValueEnum};
 
-#[derive(Debug, Clone, ValueEnum)]
+#[derive(Debug, Clone, ValueEnum, PartialEq)]
 pub enum AppMode {
     Local,
     Remote,

@@ -1,9 +1,15 @@
+use std::sync::{Arc, RwLock};
+
 use tracing::info;
 
 use crate::{
     code_run,
-    hooks::{self, iface::HookListExt as _},
+    hooks::{
+        self,
+        iface::{HookContext, HookListExt as _},
+    },
     models::{
+        app_state::AppState,
         args::{AppArgs, AppMode, Command},
         config::Config,
         feature_test::FeatureTest,
@@ -16,15 +22,18 @@ pub struct CodeRun {
     args: AppArgs,
     config: Config,
     hooks: Vec<Box<dyn hooks::iface::Hook>>,
+    state: Arc<RwLock<AppState>>,
 }
 
 impl CodeRun {
     pub fn new(args: AppArgs, config: Config) -> Self {
         let hooks = Self::load_hooks(&config);
+        let state = Arc::new(RwLock::new(AppState::default()));
         Self {
             args,
             config,
             hooks,
+            state,
         }
     }
 
@@ -44,7 +53,12 @@ impl CodeRun {
     fn run_hooks_of_type(&self, hook_type: hooks::iface::HookType) -> EmptyResult {
         let hooks_to_run = self.hooks.hooks_of_type(hook_type);
         for hook in hooks_to_run {
-            hook.run(&self.args, &self.config)?;
+            let ctx = HookContext {
+                args: &self.args,
+                config: &self.config,
+                state: Arc::clone(&self.state),
+            };
+            hook.run(&ctx)?;
         }
         Ok(())
     }

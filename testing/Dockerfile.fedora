@@ -1,0 +1,33 @@
+FROM fedora:41
+
+RUN dnf -y install \
+    openssh-server \
+    sudo \
+    systemd \
+    dnf5 \
+    git \
+    which \
+    tar \
+    curl \
+    unzip \
+    rsync \
+    && dnf clean all
+
+# Generate SSH host keys
+RUN ssh-keygen -A
+
+# Configure SSH access
+RUN mkdir /var/run/sshd -p && \
+    echo 'root:root' | chpasswd && \
+    sed -i 's/#PermitRootLogin prohibit-password/PermitRootLogin yes/' /etc/ssh/sshd_config && \
+    sed -i 's/#PasswordAuthentication yes/PasswordAuthentication yes/' /etc/ssh/sshd_config && \
+    echo 'export VISIBLE=now' >> /etc/profile
+
+# Create a non-root user
+RUN useradd -m dev && echo 'dev:dev' | chpasswd && \
+    usermod -aG wheel dev && echo '%wheel ALL=(ALL) NOPASSWD:ALL' >> /etc/sudoers
+
+EXPOSE 22
+
+# Keep SSH running
+CMD ["/usr/sbin/sshd", "-D"]

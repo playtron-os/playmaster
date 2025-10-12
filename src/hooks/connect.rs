@@ -1,14 +1,14 @@
+use inquire::Password;
 use tracing::info;
 
 use crate::{
-    hooks::iface::{Hook, HookType},
-    models::{self, args::AppArgs, config::Config},
+    hooks::iface::{Hook, HookContext, HookType},
+    models::{self, args::AppMode},
     utils::errors::{EmptyResult, ResultWithError},
 };
 
 /// Hook to establish connection to remote host if needed.
 pub struct HookConnect {}
-
 impl HookConnect {
     pub fn new() -> Self {
         HookConnect {}
@@ -35,23 +35,23 @@ impl Hook for HookConnect {
         HookType::Connect
     }
 
-    fn run(&self, args: &AppArgs, _config: &Config) -> EmptyResult {
+    fn run(&self, ctx: &HookContext) -> EmptyResult {
         if let models::args::Command::Run {
             mode: Some(mode), ..
-        } = &args.command
+        } = &ctx.args.command
         {
             info!("Connection mode specified via command line: {:?}", mode);
+
+            if *mode == AppMode::Local {
+                return Ok(());
+            }
+        } else if !self.prompt_for_remote_conn()? {
             return Ok(());
         }
 
-        if !self.prompt_for_remote_conn()? {
-            return Ok(());
-        }
-
-        // TODO: Remote connection logic here
-        info!(
-            "Remote connection feature is not implemented yet, so we will proceed with local connection."
-        );
+        let _password = Password::new("Enter your remote device's password:")
+            .without_confirmation()
+            .prompt()?;
 
         Ok(())
     }
