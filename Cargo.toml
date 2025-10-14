@@ -24,6 +24,8 @@ schemars = "1.0.4"
 reqwest = { version = "0.12.23", features = ["blocking", "json"] }
 thiserror = "2.0.17"
 ssh2 = "0.9.5"
+uuid = { version = "1.18.1", features = ["v4"] }
+scopeguard = "1.2.0"
 
 [dev-dependencies.cargo-husky]
 version = "1"

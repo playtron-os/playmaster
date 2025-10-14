@@ -1,34 +1,76 @@
-use std::{process::Command, time::Duration};
+use std::{io::Read as _, path::Path, time::Duration};
 
 use indicatif::{ProgressBar, ProgressStyle};
 
-use crate::utils::errors::{ResultTrait, ResultWithError};
-
-#[allow(dead_code)]
-pub struct CommandOutput {
-    pub stdout: String,
-    pub stderr: String,
-    pub status: i32,
-}
+use crate::{
+    models::app_state::{CommandOutput, RemoteInfo},
+    utils::errors::{EmptyResult, ResultWithError},
+};
 
 pub struct CommandUtils {}
 
 impl CommandUtils {
-    pub fn run_command_str(cmd: &str) -> ResultWithError<CommandOutput> {
-        let res = Command::new("sh")
-            .arg("-c")
-            .arg(cmd)
-            .output()
-            .auto_err("failed to run command")?;
+    pub fn run_command_str(
+        cmd: &str,
+        remote: Option<&RemoteInfo>,
+    ) -> ResultWithError<CommandOutput> {
+        if let Some(remote) = remote {
+            let res = remote.exec(cmd)?;
+            Ok(res)
+        } else {
+            let output = std::process::Command::new("sh")
+                .arg("-c")
+                .arg(cmd)
+                .stdout(std::process::Stdio::piped())
+                .stderr(std::process::Stdio::piped())
+                .output()?;
+            Ok(CommandOutput {
+                stdout: String::from_utf8_lossy(&output.stdout).to_string(),
+                stderr: String::from_utf8_lossy(&output.stderr).to_string(),
+                status: output.status.code().unwrap_or(-1),
+            })
+        }
+    }
 
-        let output = String::from_utf8_lossy(&res.stdout);
-        let stderr = String::from_utf8_lossy(&res.stderr);
+    #[allow(dead_code)]
+    pub fn copy_file_to_remote(
+        remote: Option<&RemoteInfo>,
+        local_path: &Path,
+        remote_path: &Path,
+    ) -> EmptyResult {
+        if let Some(remote) = remote {
+            let sess = remote.get_sess()?;
+            let sftp = sess.sftp()?;
+            let mut remote_file = sftp.create(remote_path)?;
+            let mut local_file = std::fs::File::open(local_path)?;
+            std::io::copy(&mut local_file, &mut remote_file)?;
+        } else {
+            // no-op for local
+        }
+        Ok(())
+    }
 
-        Ok(CommandOutput {
-            stdout: output.trim().to_string(),
-            stderr: stderr.trim().to_string(),
-            status: res.status.code().unwrap_or(-1),
-        })
+    /// Fetches the contents of a file from a remote host over SSH
+    pub fn fetch_remote_file(remote: &RemoteInfo, remote_path: &str) -> ResultWithError<String> {
+        let sess = remote.get_sess()?;
+
+        // Open SFTP session
+        let sftp = sess
+            .sftp()
+            .map_err(|e| format!("Failed to open SFTP session: {}", e))?;
+
+        // Open the remote file for reading
+        let mut remote_file = sftp
+            .open(remote_path)
+            .map_err(|e| format!("Failed to open remote file '{}': {}", remote_path, e))?;
+
+        // Read the file contents
+        let mut contents = String::new();
+        remote_file
+            .read_to_string(&mut contents)
+            .map_err(|e| format!("Failed to read remote file '{}': {}", remote_path, e))?;
+
+        Ok(contents)
     }
 
     pub fn display_loader(msg: String) -> ProgressBar {

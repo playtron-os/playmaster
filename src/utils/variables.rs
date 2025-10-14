@@ -8,7 +8,7 @@ pub struct VariablesUtils {}
 impl VariablesUtils {
     /// Expands ${VAR} or $VAR patterns using the current environment.
     pub fn expand_env_vars(input: &str) -> ResultWithError<String> {
-        let re = Regex::new(r"\$\{([^}]+)\}|\$([A-Za-z0-9_]+)")?;
+        let re = Regex::new(r"\$\{([A-Za-z0-9_]+)\}|\$([A-Za-z_][A-Za-z0-9_]*)")?;
         Ok(re
             .replace_all(input, |caps: &regex::Captures| {
                 // Capture either ${VAR} or $VAR

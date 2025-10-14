@@ -52,6 +52,9 @@ pub struct InstallSpec {
     /// Optional version, e.g. "1.2.3"
     pub version: Option<String>,
 
+    /// Optional binary path inside the archive, e.g. "flutter/bin"
+    pub bin_path: Option<String>,
+
     /// Source information, if left empty will default to DNF install
     pub source: Option<InstallSource>,
 }

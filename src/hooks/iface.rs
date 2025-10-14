@@ -8,7 +8,7 @@ use crate::{
         args::AppArgs,
         config::Config,
     },
-    utils::errors::{EmptyResult, ResultTrait},
+    utils::errors::{EmptyResult, ResultTrait, ResultWithError},
 };
 
 /// Defines the types of hooks available in the system.
@@ -52,6 +52,12 @@ pub struct HookContext<'a> {
 }
 
 impl<'a> HookContext<'a> {
+    pub fn read_state(&self) -> ResultWithError<std::sync::RwLockReadGuard<'_, AppState>> {
+        self.state
+            .read()
+            .auto_err("Failed to acquire read lock for state")
+    }
+
     pub fn initiate_remote(&self, remote: RemoteInfo) -> EmptyResult {
         let mut state = self
             .state

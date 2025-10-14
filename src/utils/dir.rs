@@ -2,7 +2,10 @@ use std::{fs, path::PathBuf};
 
 use serde::de::DeserializeOwned;
 
-use crate::utils::errors::{ResultTrait, ResultWithError};
+use crate::{
+    models::app_state::RemoteInfo,
+    utils::errors::{ResultTrait, ResultWithError},
+};
 
 pub enum YamlType {
     FeatureTest,
@@ -19,6 +22,18 @@ pub struct DirUtils;
 impl DirUtils {
     pub fn curr_dir() -> ResultWithError<std::path::PathBuf> {
         std::env::current_dir().auto_err("Could not read current directory")
+    }
+
+    pub fn root_dir(remote: Option<&RemoteInfo>) -> ResultWithError<std::path::PathBuf> {
+        let home = if let Some(remote) = remote {
+            remote
+                .exec("pwd")
+                .map(|output| PathBuf::from(output.stdout.trim()))
+        } else {
+            dirs::home_dir().ok_or_else(|| "Could not determine home directory".into())
+        };
+
+        Ok(home?.join("playmaster"))
     }
 
     pub fn parse_all_from_curr_dir<T>(yaml_type: YamlType) -> ResultWithError<Vec<YamlResult<T>>>

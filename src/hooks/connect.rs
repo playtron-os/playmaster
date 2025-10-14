@@ -79,10 +79,14 @@ impl HookConnect {
         info!("Establishing SSH connection to remote host: {remote_addr}...");
 
         // prompt for password
-        let password = inquire::Password::new("Enter your remote device's password: ")
-            .without_confirmation()
-            .with_display_mode(inquire::PasswordDisplayMode::Hidden)
-            .prompt()?;
+        let password = if let Ok(pass) = std::env::var("REMOTE_PASSWORD") {
+            pass
+        } else {
+            inquire::Password::new("Enter your remote device's password: ")
+                .without_confirmation()
+                .with_display_mode(inquire::PasswordDisplayMode::Hidden)
+                .prompt()?
+        };
 
         // parse address
         let (user, host, port) = self

@@ -26,12 +26,22 @@ gen:
 	cd ./samples/flutter_sample_app && cargo run -- gen
 
 # ----- Run CLI -----
-run:
+test:
 	@echo "🚀 Running $(BIN_NAME)..."
-	cd ./samples/flutter_sample_app && cargo run -- run --mode local
+	cd ./samples/flutter_sample_app && cargo run -- run
+
+# ----- Run CLI Local -----
+test-local:
+	@echo "🚀 Running $(BIN_NAME)..."
+	cd ./samples/flutter_sample_app && cargo run -- run --mode local -y
+
+# ----- Run CLI Remote -----
+test-remote:
+	@echo "🚀 Running $(BIN_NAME)..."
+	cd ./samples/flutter_sample_app && cargo run -- run --mode remote -y
 
 # ----- Run in Fedora Container -----
-run-fedora:
+test-fedora:
 	@echo "🚀 Running $(BIN_NAME) in Fedora container..."
 	# Check if container is already running
 	@if [ "$$(docker ps -q -f name=playmaster-fedora)" ]; then \
@@ -40,9 +50,9 @@ run-fedora:
 		echo "📦 Building Docker image..."; \
 		docker build -t playmaster-fedora -f ./testing/Dockerfile.fedora .; \
 		echo "🚀 Starting container..."; \
-		docker run -d --name playmaster-fedora -p 2222:22 playmaster-fedora; \
+		docker run -d --rm --name playmaster-fedora -p 2222:22 playmaster-fedora; \
 	fi
-	cd ./samples/flutter_sample_app && cargo run -- run --mode remote --remote-addr dev@localhost:2222
+	cd ./samples/flutter_sample_app && cargo run -- run --mode remote --remote-addr dev@localhost:2222 -s -y
 
 # ----- Setup Tasks -----
 setup:
