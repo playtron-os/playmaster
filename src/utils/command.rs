@@ -1,6 +1,8 @@
-use std::{io::Read as _, path::Path, time::Duration};
+use std::{fs, io::Read as _, path::Path, time::Duration};
 
 use indicatif::{ProgressBar, ProgressStyle};
+use ssh2::Sftp;
+use tracing::info;
 
 use crate::{
     models::app_state::{CommandOutput, RemoteInfo},
@@ -32,21 +34,42 @@ impl CommandUtils {
         }
     }
 
-    #[allow(dead_code)]
-    pub fn copy_file_to_remote(
-        remote: Option<&RemoteInfo>,
-        local_path: &Path,
-        remote_path: &Path,
+    pub fn copy_dir_to_remote(
+        remote: &RemoteInfo,
+        local_dir: &Path,
+        remote_dir: &Path,
     ) -> EmptyResult {
-        if let Some(remote) = remote {
-            let sess = remote.get_sess()?;
-            let sftp = sess.sftp()?;
-            let mut remote_file = sftp.create(remote_path)?;
-            let mut local_file = std::fs::File::open(local_path)?;
-            std::io::copy(&mut local_file, &mut remote_file)?;
-        } else {
-            // no-op for local
+        info!(
+            "Copying directory {:?} to remote {:?}",
+            local_dir, remote_dir
+        );
+
+        let sess = remote.get_sess()?;
+        let sftp = sess.sftp()?;
+        Self::upload_recursive(&sftp, local_dir, remote_dir)?;
+
+        Ok(())
+    }
+
+    fn upload_recursive(sftp: &Sftp, local_path: &Path, remote_path: &Path) -> EmptyResult {
+        // Ensure remote dir exists
+        let _ = sftp.mkdir(remote_path, 0o755);
+
+        for entry in fs::read_dir(local_path)? {
+            let entry = entry?;
+            let file_type = entry.file_type()?;
+            let local_item = entry.path();
+            let remote_item = remote_path.join(entry.file_name());
+
+            if file_type.is_dir() {
+                Self::upload_recursive(sftp, &local_item, &remote_item)?;
+            } else if file_type.is_file() {
+                let mut remote_file = sftp.create(&remote_item)?;
+                let mut local_file = fs::File::open(&local_item)?;
+                std::io::copy(&mut local_file, &mut remote_file)?;
+            }
         }
+
         Ok(())
     }
 

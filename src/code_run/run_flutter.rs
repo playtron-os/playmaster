@@ -10,11 +10,8 @@ use tracing::info;
 
 use crate::{
     code_run::run_iface::CodeRunTrait,
-    models::{
-        args::AppArgs,
-        config::{Config, ProjectType},
-        feature_test::FeatureTest,
-    },
+    hooks::iface::HookContext,
+    models::{app_state::RemoteInfo, config::ProjectType, feature_test::FeatureTest},
     utils::{
         self,
         errors::{EmptyResult, ResultWithError},
@@ -22,17 +19,18 @@ use crate::{
 };
 
 #[allow(dead_code)]
-pub struct RunFlutter {
-    args: AppArgs,
-    config: Config,
-}
+pub struct RunFlutter {}
 
 impl CodeRunTrait for RunFlutter {
     fn get_type(&self) -> ProjectType {
         ProjectType::Flutter
     }
 
-    fn run(&self, features: &[FeatureTest]) -> EmptyResult {
+    fn run(&self, ctx: &HookContext, features: &[FeatureTest]) -> EmptyResult {
+        let state = ctx.read_state()?;
+        let remote = state.remote.as_ref();
+        self.prepare_env(remote)?;
+
         info!(
             "Running Flutter tests with {} feature files",
             features.len()
@@ -50,8 +48,21 @@ impl CodeRunTrait for RunFlutter {
 }
 
 impl RunFlutter {
-    pub fn new(args: AppArgs, config: Config) -> Self {
-        Self { args, config }
+    pub fn new() -> Self {
+        Self {}
+    }
+
+    fn prepare_env(&self, remote: Option<&RemoteInfo>) -> EmptyResult {
+        if let Some(remote) = remote {
+            info!("Preparing remote environment...");
+
+            // Copy current dir to remote
+            let curr_dir = utils::dir::DirUtils::curr_dir()?;
+            let remote_dir = utils::dir::DirUtils::root_dir(Some(remote))?.join("flutter_app");
+            utils::command::CommandUtils::copy_dir_to_remote(remote, &curr_dir, &remote_dir)?;
+        }
+
+        Ok(())
     }
 
     fn execute_tests(&self, spinner: &ProgressBar, features: &[FeatureTest]) -> EmptyResult {

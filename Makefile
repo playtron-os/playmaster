@@ -52,7 +52,8 @@ test-fedora:
 		echo "🚀 Starting container..."; \
 		docker run -d --rm --name playmaster-fedora -p 2222:22 playmaster-fedora; \
 	fi
-	cd ./samples/flutter_sample_app && cargo run -- run --mode remote --remote-addr dev@localhost:2222 -s -y
+	export REMOTE_PASSWORD=dev; \
+	cd ./samples/flutter_sample_app && cargo run -- run --mode remote --remote-addr dev@localhost:2222 -y
 
 # ----- Setup Tasks -----
 setup:
