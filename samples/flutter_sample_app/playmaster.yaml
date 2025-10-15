@@ -5,7 +5,7 @@ project_type: flutter
 dependencies:
   - name: flutter
     min_version: "3.29.2"
-    version_command: flutter --version | head -n 1 | awk '{print $2}'
+    version_command: cat ~/playmaster/flutter/version
     install:
       tool: flutter
       version: "3.29.2"

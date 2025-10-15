@@ -127,10 +127,7 @@ impl HookCheckDependency {
         let dest_path = format!("/tmp/{}", filename);
 
         if let Some(remote) = remote {
-            let curl_cmd = format!(
-                "stdbuf -oL curl -L --progress-bar -o {} '{}'",
-                dest_path, url
-            );
+            let curl_cmd = format!("stdbuf -eL curl -L -o {} '{}'", dest_path, url);
             CommandUtils::run_command_str(&curl_cmd, Some(remote))?;
         } else {
             self.download_url_local_with_progress(&url, &dest_path)?;
@@ -224,8 +221,8 @@ impl HookCheckDependency {
         // Validate output is a version string
         if !SemverUtils::is_valid_version(&output) {
             error!(
-                "❌ {} version command did not return a valid version: {}",
-                dep.name, &output
+                "❌ {} version command did not return a valid version",
+                dep.name
             );
 
             if can_install && let Some(install_spec) = &dep.install {
