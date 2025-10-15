@@ -187,19 +187,8 @@ impl HookCheckDependency {
         let remote = state.remote.as_ref();
         let password = remote.map(|r| r.password.clone()).unwrap_or_default();
         OsUtils::install_file(&install_file, &password, remote)?;
-
-        if let Some(bin_path) = &install.bin_path {
-            let root_dir = DirUtils::root_dir(remote)?;
-
-            let full_path = if bin_path.starts_with('/') || bin_path.starts_with("~") {
-                bin_path.to_string()
-            } else {
-                format!("~/{}", bin_path)
-            }
-            .replace("~", root_dir.to_string_lossy().to_string().as_ref());
-
-            OsUtils::add_bin(&full_path, remote)?;
-        }
+        self.setup_bin_path(install, remote)?;
+        self.run_setup_cmd(install, remote)?;
 
         info!("Tool {} installed successfully", install_file);
 
@@ -252,6 +241,37 @@ impl HookCheckDependency {
         }
 
         Ok(false)
+    }
+
+    fn setup_bin_path(&self, install: &InstallSpec, remote: Option<&RemoteInfo>) -> EmptyResult {
+        if let Some(bin_path) = &install.bin_path {
+            let root_dir = DirUtils::root_dir(remote)?;
+
+            let full_path = if bin_path.starts_with('/') || bin_path.starts_with("~") {
+                bin_path.to_string()
+            } else {
+                format!("~/{}", bin_path)
+            }
+            .replace("~", root_dir.to_string_lossy().to_string().as_ref());
+
+            OsUtils::add_bin(&full_path, remote)?;
+        }
+        Ok(())
+    }
+
+    fn run_setup_cmd(&self, install: &InstallSpec, remote: Option<&RemoteInfo>) -> EmptyResult {
+        if let Some(setup_cmd) = &install.setup {
+            info!("Running setup command: {}", setup_cmd);
+            let res = CommandUtils::run_command_str(setup_cmd, remote)?;
+            if res.status != 0 {
+                return Err(format!(
+                    "Setup command failed with status {}: {}",
+                    res.status, res.stderr
+                )
+                .into());
+            }
+        }
+        Ok(())
     }
 }
 
