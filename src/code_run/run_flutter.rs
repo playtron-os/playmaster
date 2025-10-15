@@ -40,7 +40,7 @@ impl CodeRunTrait for RunFlutter {
 
         // Execute either locally or remotely
         if let Some(remote) = remote {
-            info!("Running Flutter tests remotely\n");
+            info!("Running Flutter tests remotely");
             self.execute_remote(remote, &exec_dir, features)
         } else {
             info!("Running Flutter tests locally\n");
@@ -190,7 +190,7 @@ impl RunFlutter {
         exec_dir: &Path,
         features: &[FeatureTest],
     ) -> EmptyResult {
-        info!("Executing tests remotely via SSH...");
+        info!("Executing tests remotely via SSH...\n");
 
         let binary = "build/linux/x64/debug/bundle/sample_app";
         let binary_arg = format!("--use-application-binary={binary}");
@@ -209,7 +209,7 @@ impl RunFlutter {
     }
 
     fn spawn_flutter_command(&self, exec_dir: &PathBuf) -> ResultWithError<Child> {
-        let binary = exec_dir.join("build/linux/x64/debug/bundle/sample_app");
+        let binary = "build/linux/x64/debug/bundle/sample_app";
         let mut command = Command::new("flutter");
         command
             .current_dir(exec_dir)
@@ -217,7 +217,7 @@ impl RunFlutter {
                 "drive",
                 "--driver=test_driver/integration_test.dart",
                 "--target=integration_test/generated/all_tests.dart",
-                &format!("--use-application-binary={binary:?}"),
+                &format!("--use-application-binary={binary}"),
                 "--no-headless",
             ])
             .env("DISPLAY", ":0") // Ensure DISPLAY is set for Linux GUI apps
@@ -230,12 +230,13 @@ impl RunFlutter {
     fn process_output(&self, child: &mut Child, features: &[FeatureTest]) -> EmptyResult {
         let stdout = child.stdout.take().unwrap();
         let reader = BufReader::new(stdout);
-        self.process_lines(reader.lines(), features)?;
+
+        let res = self.process_lines(reader.lines(), features);
         let status = child.wait()?;
-        if !status.success() {
-            info!("Some tests failed");
+        if res.is_ok() && !status.success() {
+            return Err("Error during tests".into());
         }
-        Ok(())
+        res
     }
 
     fn process_remote_output<I: Iterator<Item = String>>(
@@ -357,6 +358,10 @@ impl RunFlutter {
             "✅ Passed: {passed}  ❌ Failed: {failed}  📋 Total: {}",
             passed + failed
         );
+
+        if failed > 0 {
+            return Err("Some tests failed".into());
+        }
 
         Ok(())
     }
