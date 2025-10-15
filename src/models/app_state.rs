@@ -1,10 +1,12 @@
 use std::{
     io::{Read as _, Write as _},
     net::TcpStream,
+    sync::mpsc::{self, Receiver},
     time::Duration,
 };
 
-use ssh2::Session;
+use ssh2::{PtyModes, Session};
+use terminal_size::{Height, Width, terminal_size};
 
 use crate::utils::errors::ResultWithError;
 
@@ -73,7 +75,9 @@ impl RemoteInfo {
                     made_progress = true;
                     let chunk = String::from_utf8_lossy(&out_buf[..n]);
                     // print without forcing newlines so carriage returns updates correctly
-                    print!("{chunk}");
+                    if chunk != "exited" {
+                        print!("{chunk}");
+                    }
                     std::io::stdout().flush().ok();
                     stdout.push_str(&chunk);
                 }
@@ -125,5 +129,89 @@ impl RemoteInfo {
 
     fn is_would_block(&self, e: &std::io::Error) -> bool {
         matches!(e.kind(), std::io::ErrorKind::WouldBlock)
+    }
+
+    /// Executes a remote command and yields stdout lines in real-time.
+    pub fn exec_remote_stream<'a>(
+        &'a self,
+        cmd: &str,
+    ) -> ResultWithError<impl Iterator<Item = String> + 'a> {
+        let cmd = cmd.replace("\\$", "$");
+        let sess = self.get_sess()?;
+
+        // Get local terminal width/height
+        let (cols, rows) = terminal_size()
+            .map(|(Width(w), Height(h))| (w, h))
+            .unwrap_or((120, 30)); // fallback if not a TTY
+
+        // PTY modes
+        let mut modes = PtyModes::new();
+        modes.set_u32(ssh2::PtyModeOpcode::ECHO, 1);
+
+        // request PTY with same dimensions
+        let mut channel = sess.channel_session()?;
+        channel.request_pty("xterm", Some(modes), Some((cols as u32, rows as u32, 0, 0)))?;
+
+        let shell_cmd = format!("sh -c '{}'", cmd.replace("'", "'\\''"));
+        channel.exec(&shell_cmd)?;
+
+        sess.set_blocking(false);
+
+        let (tx, rx) = mpsc::channel::<String>();
+
+        // Spawn a thread that continuously reads stdout and sends complete lines
+        std::thread::spawn(move || {
+            let mut buffer = Vec::<u8>::new();
+            let mut tmp_buf = [0u8; 4096];
+
+            loop {
+                match channel.read(&mut tmp_buf) {
+                    Ok(n) if n > 0 => {
+                        buffer.extend_from_slice(&tmp_buf[..n]);
+                        // Split by newlines for streaming
+                        while let Some(pos) = buffer.iter().position(|&b| b == b'\n') {
+                            let line = buffer.drain(..=pos).collect::<Vec<_>>();
+                            if let Ok(text) = String::from_utf8(line) {
+                                let _ = tx.send(text.trim_end_matches('\n').to_string());
+                            }
+                        }
+                    }
+                    Err(e) if e.kind() == std::io::ErrorKind::WouldBlock => {
+                        if channel.eof() {
+                            break;
+                        }
+                        std::thread::sleep(Duration::from_millis(30));
+                    }
+                    Err(_) => break,
+                    _ => {}
+                }
+                if channel.eof() {
+                    break;
+                }
+            }
+
+            // Drain any remaining bytes
+            if !buffer.is_empty()
+                && let Ok(text) = String::from_utf8(buffer)
+            {
+                let _ = tx.send(text);
+            }
+
+            let _ = channel.wait_close();
+        });
+
+        // Return an iterator that yields lines from the channel
+        Ok(RemoteLineIterator { rx })
+    }
+}
+
+struct RemoteLineIterator {
+    rx: Receiver<String>,
+}
+
+impl Iterator for RemoteLineIterator {
+    type Item = String;
+    fn next(&mut self) -> Option<Self::Item> {
+        self.rx.recv().ok()
     }
 }

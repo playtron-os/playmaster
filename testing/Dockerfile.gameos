@@ -1,2 +1,1 @@
-FROM registry.playtron.one/internal/playtronos:1.0.0.13
-RUN dnf5 install -y openssh-server && systemctl enable sshd
+FROM ghcr.io/playtron-os/playtron-os:1.1.5.2

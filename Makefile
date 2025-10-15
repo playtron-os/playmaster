@@ -50,10 +50,32 @@ test-fedora:
 		echo "📦 Building Docker image..."; \
 		docker build -t playmaster-fedora -f ./testing/Dockerfile.fedora .; \
 		echo "🚀 Starting container..."; \
-		docker run -d --rm --name playmaster-fedora -p 2222:22 playmaster-fedora; \
+		@xhost +si:localuser:root; \
+		docker run -d --rm \
+			-u $(id -u):$(id -g) \
+			-e WAYLAND_DISPLAY=${WAYLAND_DISPLAY} \
+			-e XDG_RUNTIME_DIR=${XDG_RUNTIME_DIR} \
+			-v ${XDG_RUNTIME_DIR}/${WAYLAND_DISPLAY}:${XDG_RUNTIME_DIR}/${WAYLAND_DISPLAY} \
+			-v /run/user/$(id -u)/bus:/run/user/$(id -u)/bus \
+			--name playmaster-fedora -p 2222:22 playmaster-fedora; \
 	fi
 	export REMOTE_PASSWORD=dev; \
 	cd ./samples/flutter_sample_app && cargo run -- run --mode remote --remote-addr dev@localhost:2222 -y
+
+# ----- Run in GameOS Container -----
+# test-gameos:
+# 	@echo "🚀 Running $(BIN_NAME) in GameOS container..."
+# 	# Check if container is already running
+# 	@if [ "$$(docker ps -q -f name=playmaster-gameos)" ]; then \
+# 		echo "⚡ Container 'playmaster-gameos' is already running."; \
+# 	else \
+# 		echo "📦 Building Docker image..."; \
+# 		docker build -t playmaster-gameos -f ./testing/Dockerfile.gameos .; \
+# 		echo "🚀 Starting container..."; \
+# 		docker run -d --rm --name playmaster-gameos -p 2222:22 playmaster-gameos; \
+# 	fi
+# 	export REMOTE_PASSWORD=dev; \
+# 	cd ./samples/flutter_sample_app && cargo run -- run --mode remote --remote-addr dev@localhost:2222 -y
 
 # ----- Setup Tasks -----
 setup:

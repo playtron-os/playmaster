@@ -2,20 +2,6 @@
 
 project_type: flutter
 
-dependencies:
-  - name: flutter
-    min_version: "3.29.2"
-    version_command: flutter --version | head -n 1 | awk '{print $2}'
-    install:
-      tool: flutter
-      version: "3.29.2"
-      bin_path: "flutter/bin"
-      # Execute this to setup flutter after installation
-      setup: "flutter --version || true"
-      source:
-        type: url
-        url: "https://storage.googleapis.com/flutter_infra_release/releases/stable/linux/flutter_linux_{{version}}-stable.tar.xz"
-
 hooks:
   - name: Custom Hook
     hook_type: prepare_system

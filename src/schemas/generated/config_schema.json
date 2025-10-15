@@ -21,8 +21,7 @@
     }
   },
   "required": [
-    "project_type",
-    "dependencies"
+    "project_type"
   ],
   "$defs": {
     "Dependency": {
@@ -96,7 +95,7 @@
       ]
     },
     "HookType": {
-      "description": "Defines the types of hooks available in the system.\nConnect: For establishing connections to a remote host if needed.\nVerifySystem: For verifying system prerequisites and dependencies.\nPrepareSystem: For preparing the system before running tests.\nBeforeAll: For actions to be performed before all tests.\nBeforeTest: For actions to be performed before each individual test.\nAfterTest: For actions to be performed after each individual test.\nAfterAll: For actions to be performed after all tests have completed.",
+      "description": "Defines the types of hooks available in the system.\nConnect: For establishing connections to a remote host if needed.\nVerifySystem: For verifying system prerequisites and dependencies.\nPrepareSystem: For preparing the system before running tests.",
       "type": "string",
       "enum": [
         "connect",
@@ -151,6 +150,20 @@
     "InstallSpec": {
       "type": "object",
       "properties": {
+        "bin_path": {
+          "description": "Optional binary path inside the archive, e.g. \"flutter/bin\"",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "setup": {
+          "description": "Optional setup command to run after installation",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "source": {
           "description": "Source information, if left empty will default to DNF install",
           "anyOf": [

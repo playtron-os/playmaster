@@ -177,20 +177,21 @@ impl HookCheckDependency {
     fn install_tool(&self, ctx: &HookContext, install: &InstallSpec) -> EmptyResult {
         self.prompt_install(ctx.args, install)?;
 
-        let install_file = if let Some(source) = &install.source {
-            self.download_tool(ctx, source, install.version.clone())?
-        } else {
-            install.tool.clone()
-        };
-
         let state = ctx.read_state()?;
         let remote = state.remote.as_ref();
         let password = remote.map(|r| r.password.clone()).unwrap_or_default();
-        OsUtils::install_file(&install_file, &password, remote)?;
+
+        if let Some(source) = &install.source {
+            let install_file = self.download_tool(ctx, source, install.version.clone())?;
+            OsUtils::install_file(&install_file, &password, remote)?;
+        } else {
+            return OsUtils::install_package(&install.tool, &password, remote);
+        };
+
         self.setup_bin_path(install, remote)?;
         self.run_setup_cmd(install, remote)?;
 
-        info!("Tool {} installed successfully", install_file);
+        info!("Tool {} installed successfully", install.tool);
 
         Ok(())
     }

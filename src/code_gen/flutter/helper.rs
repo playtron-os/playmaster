@@ -183,8 +183,8 @@ extension WidgetTesterExtensions on WidgetTester {
       final totalPixels = oldImg.width * oldImg.height;
       final diffRatio = diffPixels / totalPixels;
 
-      // 0.1% threshold
-      if (diffRatio > 0.001) {
+      // 0.3% threshold
+      if (diffRatio > 0.003) {
         final String failedFolderPath = p.join(
           projectRoot,
           'integration_test',

@@ -38,6 +38,21 @@ impl OsUtils {
         }
     }
 
+    pub fn install_package(
+        package: &str,
+        sudo_password: &str,
+        remote: Option<&RemoteInfo>,
+    ) -> EmptyResult {
+        #[cfg(target_os = "linux")]
+        {
+            crate::linux::utils::os::OsUtils::install_package(package, sudo_password, remote)
+        }
+        #[cfg(not(target_os = "linux"))]
+        {
+            Ok(())
+        }
+    }
+
     pub fn add_bin(path: &str, remote: Option<&RemoteInfo>) -> EmptyResult {
         #[cfg(target_os = "linux")]
         {

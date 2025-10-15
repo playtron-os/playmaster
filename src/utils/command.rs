@@ -1,8 +1,6 @@
-use std::{fs, io::Read as _, path::Path, time::Duration};
+use std::{io::Read as _, path::Path, process::Command, time::Duration};
 
 use indicatif::{ProgressBar, ProgressStyle};
-use ssh2::Sftp;
-use tracing::info;
 
 use crate::{
     models::app_state::{CommandOutput, RemoteInfo},
@@ -34,40 +32,67 @@ impl CommandUtils {
         }
     }
 
-    pub fn copy_dir_to_remote(
+    pub fn copy_file_to_remote(
         remote: &RemoteInfo,
-        local_dir: &Path,
-        remote_dir: &Path,
+        local_path: &str,
+        remote_path: &Path,
     ) -> EmptyResult {
-        info!(
-            "Copying directory {:?} to remote {:?}",
-            local_dir, remote_dir
-        );
-
         let sess = remote.get_sess()?;
-        let sftp = sess.sftp()?;
-        Self::upload_recursive(&sftp, local_dir, remote_dir)?;
+
+        // Open SFTP session
+        let sftp = sess
+            .sftp()
+            .map_err(|e| format!("Failed to open SFTP session: {}", e))?;
+
+        // Open the local file for reading
+        let mut local_file = std::fs::File::open(local_path)
+            .map_err(|e| format!("Failed to open local file '{}': {}", local_path, e))?;
+
+        // Create or truncate the remote file for writing
+        let mut remote_file = sftp
+            .create(remote_path)
+            .map_err(|e| format!("Failed to create remote file '{:?}': {}", remote_path, e))?;
+
+        // Copy the contents from the local file to the remote file
+        std::io::copy(&mut local_file, &mut remote_file)
+            .map_err(|e| format!("Failed to copy to remote file '{:?}': {}", remote_path, e))?;
 
         Ok(())
     }
 
-    fn upload_recursive(sftp: &Sftp, local_path: &Path, remote_path: &Path) -> EmptyResult {
-        // Ensure remote dir exists
-        let _ = sftp.mkdir(remote_path, 0o755);
+    pub fn sync_dir_to_remote(
+        remote: &RemoteInfo,
+        local_path: &str,
+        remote_path: &str,
+    ) -> EmptyResult {
+        CommandUtils::run_command_str(&format!("mkdir -p {}", remote_path), Some(remote))?;
 
-        for entry in fs::read_dir(local_path)? {
-            let entry = entry?;
-            let file_type = entry.file_type()?;
-            let local_item = entry.path();
-            let remote_item = remote_path.join(entry.file_name());
+        let ssh_target = format!("{}@{}", remote.user, remote.host);
+        let ssh_cmd = format!("ssh -p {}", remote.port);
 
-            if file_type.is_dir() {
-                Self::upload_recursive(sftp, &local_item, &remote_item)?;
-            } else if file_type.is_file() {
-                let mut remote_file = sftp.create(&remote_item)?;
-                let mut local_file = fs::File::open(&local_item)?;
-                std::io::copy(&mut local_file, &mut remote_file)?;
-            }
+        let mut command = Command::new("sshpass");
+        command.args([
+            "-p",
+            &remote.password,
+            "rsync",
+            "-azP",
+            "--delete",
+            "--exclude",
+            "build/",
+            "--exclude",
+            ".dart_tool/",
+            "--exclude",
+            ".git/",
+            "-e",
+            &ssh_cmd,
+            &format!("{}/", local_path.trim_end_matches('/')),
+            &format!("{}:{}/", ssh_target, remote_path.trim_end_matches('/')),
+        ]);
+
+        let output = command.output()?;
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            return Err(format!("rsync failed: {}", stderr).into());
         }
 
         Ok(())

@@ -1214,6 +1214,7 @@ dependencies = [
  "serde_yaml",
  "shlex",
  "ssh2",
+ "terminal_size",
  "thiserror",
  "tracing",
  "tracing-subscriber",
@@ -1780,6 +1781,16 @@ dependencies = [
  "once_cell",
  "rustix 1.1.2",
  "windows-sys 0.61.1",
+]
+
+[[package]]
+name = "terminal_size"
+version = "0.4.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "60b8cb979cb11c32ce1603f8137b22262a9d131aaa5c37b5678025f22b8becd0"
+dependencies = [
+ "rustix 1.1.2",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]

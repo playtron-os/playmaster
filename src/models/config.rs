@@ -22,6 +22,7 @@ pub enum ProjectType {
 #[derive(Debug, Deserialize, Clone, JsonSchema)]
 pub struct Config {
     pub project_type: ProjectType,
+    #[serde(default)]
     pub dependencies: Vec<Dependency>,
     #[serde(default)]
     pub hooks: Vec<HookConfig>,
@@ -32,7 +33,16 @@ impl Config {
         let config_path = DirUtils::curr_dir()?.join("playmaster.yaml");
         let content = fs::read_to_string(config_path).auto_err("Could not read config file")?;
         let expanded = VariablesUtils::expand_env_vars(&content)?;
-        serde_yaml::from_str(&expanded).auto_err("Invalid config format")
+        let mut config: Config =
+            serde_yaml::from_str(&expanded).auto_err("Invalid config format")?;
+        config.load_default_configs();
+        Ok(config)
+    }
+
+    fn load_default_configs(&mut self) {
+        if self.project_type == ProjectType::Flutter {
+            self.add_flutter_defaults();
+        }
     }
 }
 

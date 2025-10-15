@@ -221,7 +221,7 @@ impl OsUtils {
 
         // Perform installation
         let status = Command::new("rpm-ostree")
-            .args(["override", "install", package])
+            .args(["install", package])
             .stdin(Stdio::inherit())
             .stdout(Stdio::inherit())
             .stderr(Stdio::inherit())
@@ -270,7 +270,7 @@ impl OsUtils {
     ) -> EmptyResult {
         let base_cmd = if is_ostree {
             format!(
-                "rpm-ostree unlock && rpm-ostree override install {}",
+                "(rpm-ostree unlock || true) && rpm-ostree install {}",
                 package
             )
         } else {
@@ -291,6 +291,104 @@ impl OsUtils {
         }
 
         info!("✅ Remote installation of '{}' succeeded", package);
+        Ok(())
+    }
+
+    /// Install a package by name using either rpm-ostree or dnf, depending on host type.
+    pub fn install_package(
+        package: &str,
+        sudo_password: &str,
+        remote: Option<&RemoteInfo>,
+    ) -> EmptyResult {
+        let is_ostree = OsUtils::is_fedora_silverblue(remote)?;
+
+        if let Some(remote) = remote {
+            // Remote install
+            let base_cmd = if is_ostree {
+                // rpm-ostree requires unlock and override install
+                format!("rpm-ostree install {} --apply-live", package)
+            } else {
+                format!("dnf install -y {}", package)
+            };
+
+            let cmd_str = format!("echo '{}' | sudo -S {}", sudo_password, base_cmd);
+            info!(
+                "Installing '{}' remotely with {}",
+                package,
+                if is_ostree { "rpm-ostree" } else { "dnf" }
+            );
+
+            let result = CommandUtils::run_command_str(&cmd_str, Some(remote))?;
+
+            if result.status != 0 {
+                error!(
+                    "❌ Remote install of '{}' failed: {}",
+                    package, result.stderr
+                );
+                return Err(format!("Remote installation of '{}' failed", package).into());
+            }
+
+            info!("✅ Remote installation of '{}' succeeded", package);
+        } else {
+            // Local install
+            if is_ostree {
+                info!("Detected Fedora Silverblue/Kinoite — using rpm-ostree");
+
+                // Unlock just in case and apply live if possible
+                let _ = Command::new("sudo").args(["rpm-ostree", "unlock"]).status();
+
+                let status = Command::new("sudo")
+                    .args([
+                        "-S",
+                        "rpm-ostree",
+                        "override",
+                        "install",
+                        package,
+                        "--apply-live",
+                        "--allow-replacement",
+                    ])
+                    .stdin(Stdio::piped())
+                    .stdout(Stdio::inherit())
+                    .stderr(Stdio::inherit())
+                    .spawn()
+                    .and_then(|mut child| {
+                        child.stdin.as_mut().map(|stdin| {
+                            stdin.write_all(format!("{}\n", sudo_password).as_bytes())
+                        });
+                        child.wait()
+                    })
+                    .auto_err("Failed to execute rpm-ostree install")?;
+
+                if !status.success() {
+                    return Err(format!("rpm-ostree install of '{}' failed", package).into());
+                }
+                info!("✅ rpm-ostree install of '{}' succeeded", package);
+            } else {
+                info!("Running local DNF install for '{}'", package);
+
+                let mut cmd = Command::new("sudo");
+                cmd.args(["-S", "dnf", "install", "-y", package])
+                    .stdout(Stdio::inherit())
+                    .stderr(Stdio::inherit());
+
+                let mut child = cmd
+                    .stdin(Stdio::piped())
+                    .spawn()
+                    .auto_err("Failed to spawn sudo")?;
+                child
+                    .stdin
+                    .as_mut()
+                    .auto_err("Failed to open stdin")?
+                    .write_all(format!("{}\n", sudo_password).as_bytes())?;
+                let status = child.wait().auto_err("Failed to wait for sudo child")?;
+                if !status.success() {
+                    return Err(format!("DNF install of '{}' failed", package).into());
+                }
+
+                info!("✅ DNF install of '{}' completed successfully", package);
+            }
+        }
+
         Ok(())
     }
 }
