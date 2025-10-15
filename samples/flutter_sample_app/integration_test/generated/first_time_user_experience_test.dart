@@ -15,6 +15,8 @@ void main() {
 
   group('First Time User Experience', () {
     testWidgets('Successful Login', (tester) async {
+      await tester.setTestResolution();
+
       app.main();
       await tester.pumpAndSettle();
 
@@ -33,10 +35,15 @@ void main() {
         find.byType(LinearProgressIndicator),
       );
       await tester.pumpUntilFound(find.text('Welcome'));
-      await tester.compareScreenshot('screenshot_welcome');
+      await tester.compareScreenshot(
+        'first_time_user_experience_test',
+        'screenshot_welcome',
+      );
     });
 
     testWidgets('Invalid Login', (tester) async {
+      await tester.setTestResolution();
+
       app.main();
       await tester.pumpAndSettle();
 

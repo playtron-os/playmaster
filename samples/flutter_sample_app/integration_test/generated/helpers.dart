@@ -7,9 +7,25 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:screenshot/screenshot.dart';
 import 'package:image/image.dart' as img;
+import 'package:window_size/window_size.dart';
+
+const updateScreenshots = bool.fromEnvironment('UPDATE_SCREENSHOTS');
 
 /// Custom extensions for WidgetTester and Finders used by generated tests.
 extension WidgetTesterExtensions on WidgetTester {
+  Future<void> setTestResolution({
+    Size size = const Size(1280, 800),
+    double ratio = 1.0,
+  }) async {
+    view.devicePixelRatio = ratio;
+    final screens = await getScreenList();
+    final screen = screens.first;
+    final x = screen.frame.left + (screen.frame.width - size.width) / 2;
+    final y = screen.frame.top + (screen.frame.height - size.height) / 2;
+    setWindowFrame(Rect.fromLTWH(x, y, size.width, size.height));
+    await pumpAndSettle();
+  }
+
   /// Pumps until a widget matching [finder] appears, or throws after [timeout].
   Future<void> pumpUntilFound(
     Finder finder, {
@@ -95,13 +111,18 @@ extension WidgetTesterExtensions on WidgetTester {
     );
   }
 
-  Future<void> compareScreenshot(String name, {bool update = false}) async {
+  Future<void> compareScreenshot(
+    String folderName,
+    String name, {
+    bool update = false,
+  }) async {
     // --- Paths ---
     final String projectRoot = Directory.current.path;
     final String folderPath = p.join(
       projectRoot,
       'integration_test',
       'screenshots',
+      folderName,
     );
     final String imagePath = p.join(folderPath, '$name.png');
 
@@ -119,7 +140,7 @@ extension WidgetTesterExtensions on WidgetTester {
     final File imageFile = File(imagePath);
     await Directory(folderPath).create(recursive: true);
 
-    if (update || !await imageFile.exists()) {
+    if (update || !await imageFile.exists() || updateScreenshots) {
       // ✅ Update mode → save new reference image
       await imageFile.writeAsBytes(res);
       debugPrint('Updated reference screenshot: $imagePath');
@@ -154,6 +175,20 @@ extension WidgetTesterExtensions on WidgetTester {
 
       // 0.1% threshold
       if (diffRatio > 0.001) {
+        final String failedFolderPath = p.join(
+          projectRoot,
+          'integration_test',
+          'screenshots',
+          folderName,
+          'failed',
+        );
+        final String failedImagePath = p.join(failedFolderPath, '$name.png');
+
+        final File failedImageFile = File(failedImagePath);
+        await Directory(failedFolderPath).create(recursive: true);
+        await failedImageFile.writeAsBytes(res);
+        debugPrint('Saved failed screenshot: $failedImagePath');
+
         throw Exception(
           '''Screenshot comparison failed for $name, please update screenshots if the changes are expected.
 

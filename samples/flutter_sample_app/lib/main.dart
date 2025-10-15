@@ -7,7 +7,7 @@ import 'package:flutter/rendering.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:screenshot/screenshot.dart';
 
-void main() {
+void main() async {
   runApp(
     Screenshot(controller: ScreenshotController(), child: const SampleApp()),
   );

@@ -65,8 +65,9 @@ impl GenFlutter {
 
 impl FeatureTest {
     pub fn generate_dart(&self, out_dir: &Path) -> EmptyResult {
-        let file_name = self.name.to_lowercase().replace(' ', "_") + "_test.dart";
-        let file_path = out_dir.join(file_name);
+        let normalized_name = self.name.to_lowercase().replace(' ', "_") + "_test";
+        let file_name = normalized_name.clone() + ".dart";
+        let file_path = out_dir.join(&file_name);
         let mut out = String::new();
 
         // Header
@@ -98,11 +99,12 @@ impl FeatureTest {
                 "    testWidgets('{}', (tester) async {{\n",
                 test.name
             ));
+            out.push_str("      await tester.setTestResolution();\n\n");
             out.push_str("      app.main();\n");
             out.push_str("      await tester.pumpAndSettle();\n\n");
 
             for step in &test.steps {
-                out.push_str(&step.to_dart_code());
+                out.push_str(&step.to_dart_code(&normalized_name));
             }
 
             out.push_str("    });\n\n");
@@ -116,7 +118,7 @@ impl FeatureTest {
 }
 
 impl Step {
-    pub fn to_dart_code(&self) -> String {
+    pub fn to_dart_code(&self, file_name: &str) -> String {
         match self {
             Step::WaitFor { wait_for } => match wait_for {
                 WaitFor::Text { text } => format!(
@@ -156,7 +158,7 @@ impl Step {
                     format!("      expect(find.text('{}'), findsOneWidget);\n", text)
                 }
                 feature_test::MatchTarget::Screenshot { screenshot } => {
-                    format!("      await tester.compareScreenshot('{}');\n", screenshot)
+                    format!("      await tester.compareScreenshot('{}', '{}');\n", file_name, screenshot)
                 }
             },
         }
