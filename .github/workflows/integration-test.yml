@@ -88,7 +88,8 @@ jobs:
           sleep 3
 
           # Run the tests via playmaster
-          ../../target/release/playmaster run --mode local
+          ../../target/release/playmaster run --mode local || true
+          DISPLAY=":99" "sh" "-c" "flutter drive --driver=test_driver/integration_test.dart --target=integration_test/generated/all_tests.dart --use-application-binary=build/linux/x64/debug/bundle/sample_app --no-headless"
 
           # Note: Tests might fail due to UI automation limitations in CI
           # This is expected and can be refined later

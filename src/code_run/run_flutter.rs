@@ -292,6 +292,8 @@ impl RunFlutter {
             let mut line = line?;
             line = line.trim().to_string();
 
+            println!("#### LINE: {line}");
+
             if line.is_empty()
                 || line.contains("Some tests failed")
                 || line.contains("All tests passed")
