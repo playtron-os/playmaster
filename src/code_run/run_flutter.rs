@@ -240,7 +240,7 @@ impl RunFlutter {
         let binary = format!("build/linux/x64/debug/bundle/{binary_name}");
         let binary_arg = format!("--use-application-binary={binary}");
         let args = format!(
-            "--driver=test_driver/integration_test.dart --target=integration_test/generated/all_tests.dart {binary_arg} --no-headless"
+            "--driver=test_driver/integration_test.dart --target=integration_test/generated/all_tests.dart {binary_arg} --no-headless -d linux"
         );
 
         Ok(format!("flutter drive {args}"))
