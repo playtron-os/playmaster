@@ -1,4 +1,5 @@
 use std::{
+    env, fs,
     io::{BufRead as _, BufReader},
     path::{Path, PathBuf},
     process::{Child, Command, Stdio},
@@ -12,7 +13,7 @@ use crate::{
     models::{app_state::RemoteInfo, config::ProjectType, feature_test::FeatureTest},
     utils::{
         self,
-        errors::{EmptyResult, ResultWithError},
+        errors::{EmptyResult, ResultTrait as _, ResultWithError},
     },
 };
 
@@ -192,39 +193,56 @@ impl RunFlutter {
     ) -> EmptyResult {
         info!("Executing tests remotely via SSH...\n");
 
-        let binary = "build/linux/x64/debug/bundle/sample_app";
-        let binary_arg = format!("--use-application-binary={binary}");
-        let args = format!(
-            "--driver=test_driver/integration_test.dart --target=integration_test/generated/all_tests.dart {binary_arg} --no-headless"
-        );
-
         let cmd = format!(
-            "cd {} && DISPLAY=:0 flutter drive {}",
+            "cd {} && DISPLAY={} {}",
             exec_dir.display(),
-            args
+            self.get_display(),
+            self.get_flutter_drive_command_str(exec_dir)?,
         );
 
         let output = remote.exec_remote_stream(&cmd)?;
         self.process_remote_output(output, features)
     }
 
+    fn get_display(&self) -> String {
+        env::var("DISPLAY").unwrap_or_else(|_| ":0".to_string())
+    }
+
     fn spawn_flutter_command(&self, exec_dir: &PathBuf) -> ResultWithError<Child> {
-        let binary = "build/linux/x64/debug/bundle/sample_app";
-        let mut command = Command::new("flutter");
+        let mut command = Command::new("sh");
         command
             .current_dir(exec_dir)
-            .args([
-                "drive",
-                "--driver=test_driver/integration_test.dart",
-                "--target=integration_test/generated/all_tests.dart",
-                &format!("--use-application-binary={binary}"),
-                "--no-headless",
-            ])
-            .env("DISPLAY", ":0") // Ensure DISPLAY is set for Linux GUI apps
+            .args(["-c", &self.get_flutter_drive_command_str(exec_dir)?])
+            .env("DISPLAY", self.get_display())
             .stdout(Stdio::piped())
             .stderr(Stdio::inherit());
 
         Ok(command.spawn()?)
+    }
+
+    fn get_flutter_drive_command_str(&self, exec_dir: &Path) -> ResultWithError<String> {
+        let parent_folder_name = exec_dir
+            .file_name()
+            .and_then(|n| n.to_str())
+            .unwrap_or("unknown");
+
+        let pubspec_path = exec_dir.join("pubspec.yaml");
+        let content = fs::read_to_string(pubspec_path).auto_err("Could not read pubspec file")?;
+        let pubspec: serde_yaml::Value =
+            serde_yaml::from_str(&content).auto_err("Invalid config format")?;
+
+        let binary_name = pubspec
+            .get("name")
+            .and_then(|v| v.as_str())
+            .unwrap_or(parent_folder_name);
+
+        let binary = format!("build/linux/x64/debug/bundle/{binary_name}");
+        let binary_arg = format!("--use-application-binary={binary}");
+        let args = format!(
+            "--driver=test_driver/integration_test.dart --target=integration_test/generated/all_tests.dart {binary_arg} --no-headless"
+        );
+
+        Ok(format!("flutter drive {args}"))
     }
 
     fn process_output(&self, mut child: Child, features: &[FeatureTest]) -> EmptyResult {
