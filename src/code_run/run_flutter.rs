@@ -180,8 +180,8 @@ impl RunFlutter {
     }
 
     fn execute_local(&self, exec_dir: &PathBuf, features: &[FeatureTest]) -> EmptyResult {
-        let mut child = self.spawn_flutter_command(exec_dir)?;
-        self.process_output(&mut child, features)
+        let child = self.spawn_flutter_command(exec_dir)?;
+        self.process_output(child, features)
     }
 
     fn execute_remote(
@@ -227,13 +227,19 @@ impl RunFlutter {
         Ok(command.spawn()?)
     }
 
-    fn process_output(&self, child: &mut Child, features: &[FeatureTest]) -> EmptyResult {
+    fn process_output(&self, mut child: Child, features: &[FeatureTest]) -> EmptyResult {
         let stdout = child.stdout.take().unwrap();
         let reader = BufReader::new(stdout);
 
         let res = self.process_lines(reader.lines(), features);
-        let status = child.wait()?;
+        let output = child.wait_with_output()?;
+        let status = output.status;
         if res.is_ok() && !status.success() {
+            error!(
+                "❌ Error when running tests, status:{}, error:{}",
+                status,
+                String::from_utf8_lossy(&output.stderr)
+            );
             return Err("Error during tests".into());
         }
         res
