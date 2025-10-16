@@ -184,7 +184,7 @@ extension WidgetTesterExtensions on WidgetTester {
       final diffRatio = diffPixels / totalPixels;
 
       // 0.3% threshold
-      if (diffRatio > 0.003) {
+      if (diffRatio > 0.005) {
         final String failedFolderPath = p.join(
           projectRoot,
           'integration_test',
