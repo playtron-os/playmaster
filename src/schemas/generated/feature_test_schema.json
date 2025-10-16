@@ -3,6 +3,16 @@
   "title": "FeatureTest",
   "type": "object",
   "properties": {
+    "before_each": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/BeforeEach"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "description": {
       "type": "string",
       "default": ""
@@ -29,6 +39,54 @@
     "tests"
   ],
   "$defs": {
+    "BeforeEach": {
+      "type": "object",
+      "properties": {
+        "steps": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/Step"
+          }
+        }
+      }
+    },
+    "FindBy": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "key": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "key"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "text"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "placeholder": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "placeholder"
+          ]
+        }
+      ]
+    },
     "Match": {
       "type": "object",
       "anyOf": [
@@ -56,6 +114,42 @@
         }
       ]
     },
+    "Offset": {
+      "type": "object",
+      "properties": {
+        "x": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "y": {
+          "type": "integer",
+          "format": "int32"
+        }
+      },
+      "required": [
+        "x",
+        "y"
+      ]
+    },
+    "PointerAction": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "remove": {
+              "type": "boolean"
+            },
+            "to": {
+              "$ref": "#/$defs/Offset"
+            }
+          },
+          "required": [
+            "to",
+            "remove"
+          ]
+        }
+      ]
+    },
     "ProgressWidgetType": {
       "type": "string",
       "enum": [
@@ -63,8 +157,26 @@
         "radial"
       ]
     },
+    "ScrollTarget": {
+      "type": "object",
+      "properties": {
+        "by": {
+          "$ref": "#/$defs/FindBy"
+        },
+        "delta": {
+          "$ref": "#/$defs/Offset"
+        }
+      },
+      "required": [
+        "by",
+        "delta"
+      ]
+    },
     "Step": {
       "anyOf": [
+        {
+          "type": "null"
+        },
         {
           "type": "object",
           "properties": {
@@ -79,8 +191,27 @@
         {
           "type": "object",
           "properties": {
+            "not_found": {
+              "$ref": "#/$defs/FindBy"
+            },
+            "timeout_millis": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0
+            }
+          },
+          "required": [
+            "not_found"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
             "tap": {
-              "$ref": "#/$defs/Tap"
+              "$ref": "#/$defs/FindBy"
             }
           },
           "required": [
@@ -108,58 +239,27 @@
           "required": [
             "match"
           ]
-        }
-      ]
-    },
-    "Tap": {
-      "type": "object",
-      "anyOf": [
+        },
         {
           "type": "object",
           "properties": {
-            "text": {
-              "type": "string"
+            "scroll": {
+              "$ref": "#/$defs/ScrollTarget"
             }
           },
           "required": [
-            "text"
+            "scroll"
           ]
         },
         {
           "type": "object",
           "properties": {
-            "placeholder": {
-              "type": "string"
+            "pointer": {
+              "$ref": "#/$defs/PointerAction"
             }
           },
           "required": [
-            "placeholder"
-          ]
-        }
-      ]
-    },
-    "Target": {
-      "anyOf": [
-        {
-          "type": "object",
-          "properties": {
-            "text": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "text"
-          ]
-        },
-        {
-          "type": "object",
-          "properties": {
-            "placeholder": {
-              "type": "string"
-            }
-          },
-          "required": [
-            "placeholder"
+            "pointer"
           ]
         }
       ]
@@ -190,7 +290,7 @@
       "type": "object",
       "properties": {
         "by": {
-          "$ref": "#/$defs/Target"
+          "$ref": "#/$defs/FindBy"
         },
         "value": {
           "type": "string"
@@ -208,6 +308,14 @@
           "properties": {
             "key": {
               "type": "string"
+            },
+            "timeout_millis": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0
             }
           },
           "required": [
@@ -219,6 +327,14 @@
           "properties": {
             "text": {
               "type": "string"
+            },
+            "timeout_millis": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0
             }
           },
           "required": [
@@ -243,6 +359,14 @@
           "properties": {
             "progress": {
               "$ref": "#/$defs/ProgressWidgetType"
+            },
+            "timeout_millis": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "format": "uint32",
+              "minimum": 0
             }
           },
           "required": [

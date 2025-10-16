@@ -1214,6 +1214,7 @@ dependencies = [
  "serde_yaml",
  "shlex",
  "ssh2",
+ "tempfile",
  "terminal_size",
  "thiserror",
  "tracing",

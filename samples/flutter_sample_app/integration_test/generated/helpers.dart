@@ -1,18 +1,29 @@
 // GENERATED FILE - DO NOT EDIT
 import 'dart:io';
+import 'dart:ui';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:integration_test/integration_test.dart';
 import 'package:path/path.dart' as p;
 import 'package:screenshot/screenshot.dart';
 import 'package:image/image.dart' as img;
 import 'package:window_size/window_size.dart';
+import 'package:sample_app/main.dart' as app;
 
 const updateScreenshots = bool.fromEnvironment('UPDATE_SCREENSHOTS');
 
 /// Custom extensions for WidgetTester and Finders used by generated tests.
 extension WidgetTesterExtensions on WidgetTester {
+  Future<void> initializeTest() async {
+    IntegrationTestWidgetsFlutterBinding.ensureInitialized().framePolicy =
+        LiveTestWidgetsFlutterBindingFramePolicy.fullyLive;
+    await setTestResolution();
+    app.main();
+    await pumpAndSettle();
+  }
+
   Future<void> setTestResolution({
     Size size = const Size(1280, 800),
     double ratio = 1.0,
@@ -197,6 +208,33 @@ flutter test integration_test --dart-define=UPDATE_SCREENSHOTS=true''',
         );
       }
     }
+  }
+
+  Future<void> movePointer(Offset to, {bool remove = false}) async {
+    final TestGesture gesture = await createGesture(
+      kind: PointerDeviceKind.mouse,
+    );
+    await gesture.moveTo(to);
+
+    if (remove) {
+      await gesture.removePointer();
+    }
+
+    await pumpAndSettle();
+  }
+
+  Future<void> waitUntilGone(
+    Finder finder, {
+    Duration timeout = const Duration(seconds: 10),
+  }) async {
+    final end = DateTime.now().add(timeout);
+
+    while (DateTime.now().isBefore(end)) {
+      await pump(const Duration(milliseconds: 100));
+      if (finder.evaluate().isEmpty) return;
+    }
+
+    throw Exception('Timed out waiting for $finder to disappear');
   }
 }
 

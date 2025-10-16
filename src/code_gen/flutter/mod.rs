@@ -18,6 +18,7 @@ use crate::{
 
 mod entrypoint;
 mod helper;
+mod test_driver;
 mod utils;
 mod vars;
 
@@ -42,6 +43,7 @@ impl CodeGenTrait for GenFlutter {
 
         self.generate_vars()?;
         self.generate_all_entrypoint(features)?;
+        self.generate_test_driver()?;
         self.run_dart_format();
         self.run_dart_fix();
 
@@ -69,17 +71,36 @@ impl FeatureTest {
         let file_name = normalized_name.clone() + ".dart";
         let file_path = out_dir.join(&file_name);
         let mut out = String::new();
+        let has_before_each = self.before_each.is_some();
 
         // Header
         out.push_str("// GENERATED FILE - DO NOT EDIT\n");
+        out.push_str("import 'dart:ui';\n");
         out.push_str("import 'package:flutter_test/flutter_test.dart';\n");
         out.push_str("import 'package:flutter/material.dart';\n");
         out.push_str("import 'package:integration_test/integration_test.dart';\n");
-        out.push_str("import 'package:sample_app/main.dart' as app;\n\n");
         out.push_str("import 'helpers.dart';\n");
         out.push_str("import 'vars.dart';\n\n");
         out.push_str("void main() {\n");
         out.push_str("  IntegrationTestWidgetsFlutterBinding.ensureInitialized();\n\n");
+
+        // Before each
+        if let Some(before_each) = self.before_each.as_ref()
+            && !before_each.steps.is_empty()
+        {
+            let mut steps = "".to_owned();
+            for step in &before_each.steps {
+                steps.push_str(&step.to_dart_code(&normalized_name));
+            }
+
+            out.push_str(&format!(
+                r#"
+beforeEach(WidgetTester tester) async {{
+    {steps}
+}}
+        "#
+            ));
+        }
 
         // Vars
         if !self.vars.is_empty() {
@@ -99,12 +120,18 @@ impl FeatureTest {
                 "    testWidgets('{}', (tester) async {{\n",
                 test.name
             ));
-            out.push_str("      await tester.setTestResolution();\n\n");
-            out.push_str("      app.main();\n");
-            out.push_str("      await tester.pumpAndSettle();\n\n");
+            out.push_str("      await tester.initializeTest();");
+            if has_before_each {
+                out.push_str("      await beforeEach(tester);\n");
+            } else {
+                out.push('\n');
+            }
+            out.push('\n');
 
             for step in &test.steps {
+                out.push_str("      //\n");
                 out.push_str(&step.to_dart_code(&normalized_name));
+                out.push('\n');
             }
 
             out.push_str("    });\n\n");
@@ -120,51 +147,96 @@ impl FeatureTest {
 impl Step {
     pub fn to_dart_code(&self, file_name: &str) -> String {
         match self {
+            Step::Settle {} => "      await tester.pumpAndSettle();\n".to_owned(),
+            Step::NotFound {
+                not_found,
+                timeout_millis,
+            } => format!(
+                "      await tester.waitUntilGone({}, timeout: {});\n",
+                Self::find_by(not_found),
+                Self::duration(*timeout_millis, 10000)
+            ),
             Step::WaitFor { wait_for } => match wait_for {
-                WaitFor::Key { key } => format!(
-                    "      await tester.pumpUntilFound(find.byKey(Key('{}')));\n",
-                    key
+                WaitFor::Key {
+                    key,
+                    timeout_millis,
+                } => format!(
+                    "      await tester.pumpUntilFound(find.byKey(Key('{}')), timeout: {});\n",
+                    key,
+                    Self::duration(*timeout_millis, 5000)
                 ),
-                WaitFor::Text { text } => format!(
-                    "      await tester.pumpUntilFound(find.text('{}'));\n",
-                    text
+                WaitFor::Text {
+                    text,
+                    timeout_millis,
+                } => format!(
+                    "      await tester.pumpUntilFound(find.text('{}'), timeout: {});\n",
+                    text,
+                    Self::duration(*timeout_millis, 5000)
                 ),
                 WaitFor::Delay { delay } => format!(
                     "      await tester.pump(Duration(milliseconds: {}));\n",
                     delay
                 ),
-                WaitFor::Progress { progress } => match progress {
-                    feature_test::ProgressWidgetType::Linear => "      await tester.pumpUntilProgressCompleted(find.byType(LinearProgressIndicator));\n".to_string(),
-                    feature_test::ProgressWidgetType::Radial => "      await tester.pumpUntilProgressCompleted(find.byType(CircularProgressIndicator));\n".to_string(),
+                WaitFor::Progress {
+                    progress,
+                    timeout_millis,
+                } => match progress {
+                    feature_test::ProgressWidgetType::Linear => format!(
+                        "      await tester.pumpUntilProgressCompleted(find.byType(LinearProgressIndicator), timeout: {});\n",
+                        Self::duration(*timeout_millis, 30000)
+                    ),
+                    feature_test::ProgressWidgetType::Radial => format!(
+                        "      await tester.pumpUntilProgressCompleted(find.byType(CircularProgressIndicator), timeout: {});\n",
+                        Self::duration(*timeout_millis, 30000)
+                    ),
                 },
             },
-            Step::Tap { tap } => match &tap.target {
-                feature_test::Target::Placeholder { placeholder } => format!(
-                    "      await tester.tap(find.byPlaceholder('{}'));\n",
-                    placeholder
-                ),
-                feature_test::Target::Text { text } => {
-                    format!("      await tester.tap(find.text('{}'));\n", text)
-                }
-            },
-            Step::Type { r#type } => match &r#type.by {
-                feature_test::Target::Placeholder { placeholder } => format!(
-                    "      await tester.enterText(find.byPlaceholder('{}'), '{}');\n",
-                    placeholder, r#type.value
-                ),
-                feature_test::Target::Text { text } => format!(
-                    "      await tester.enterText(find.text('{}'), '{}');\n",
-                    text, r#type.value
-                ),
-            },
+            Step::Tap { tap } => format!(
+                "      await tester.pumpAndSettle();\n      await tester.tap({}, kind: PointerDeviceKind.mouse);\n      await tester.pumpAndSettle();\n",
+                Self::find_by(tap)
+            ),
+            Step::Type { r#type } => format!(
+                "      await tester.pumpAndSettle();\n      await tester.enterText({}, '{}');\n      await tester.pumpAndSettle();\n",
+                Self::find_by(&r#type.by),
+                r#type.value
+            ),
             Step::Match { r#match } => match &r#match.target {
                 feature_test::MatchTarget::Text { text } => {
                     format!("      expect(find.text('{}'), findsOneWidget);\n", text)
                 }
                 feature_test::MatchTarget::Screenshot { screenshot } => {
-                    format!("      await tester.compareScreenshot('{}', '{}');\n", file_name, screenshot)
+                    format!(
+                        "      await tester.compareScreenshot('{}', '{}');\n",
+                        file_name, screenshot
+                    )
                 }
             },
+            Step::Scroll { scroll } => format!(
+                "      await tester.drag({}, const Offset({}, {}));\n",
+                Self::find_by(&scroll.by),
+                scroll.delta.x,
+                scroll.delta.y
+            ),
+            Step::Pointer { pointer } => match pointer {
+                feature_test::PointerAction::Move { to, remove } => format!(
+                    "      await tester.movePointer(Offset({}, {}), remove: {});\n",
+                    to.x, to.y, remove,
+                ),
+            },
         }
+    }
+
+    fn find_by(by: &feature_test::FindBy) -> String {
+        match by {
+            feature_test::FindBy::Key { key } => format!("find.byKey(Key('{}'))", key),
+            feature_test::FindBy::Text { text } => format!("find.text('{}')", text),
+            feature_test::FindBy::Placeholder { placeholder } => {
+                format!("find.byPlaceholder('{}')", placeholder)
+            }
+        }
+    }
+
+    fn duration(duration: Option<u32>, default_ms: u32) -> String {
+        format!("Duration(milliseconds: {})", duration.unwrap_or(default_ms))
     }
 }

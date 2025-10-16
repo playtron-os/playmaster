@@ -14,6 +14,7 @@ pub struct FeatureTest {
     pub name: String,
     #[serde(default)]
     pub description: String,
+    pub before_each: Option<BeforeEach>,
     pub tests: Vec<TestCase>,
     #[serde(default)]
     pub vars: HashMap<String, String>,
@@ -27,12 +28,37 @@ pub struct TestCase {
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
+pub struct BeforeEach {
+    #[serde(default)]
+    pub steps: Vec<Step>,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
 #[serde(untagged)]
 pub enum Step {
-    WaitFor { wait_for: WaitFor },
-    Tap { tap: Tap },
-    Type { r#type: TypeAction },
-    Match { r#match: Match },
+    WaitFor {
+        wait_for: WaitFor,
+    },
+    NotFound {
+        not_found: FindBy,
+        timeout_millis: Option<u32>,
+    },
+    Tap {
+        tap: FindBy,
+    },
+    Type {
+        r#type: TypeAction,
+    },
+    Match {
+        r#match: Match,
+    },
+    Scroll {
+        scroll: ScrollTarget,
+    },
+    Pointer {
+        pointer: PointerAction,
+    },
+    Settle {},
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
@@ -45,21 +71,53 @@ pub enum ProgressWidgetType {
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(untagged)]
 pub enum WaitFor {
-    Key { key: String },
-    Text { text: String },
-    Delay { delay: u64 },
-    Progress { progress: ProgressWidgetType },
+    Key {
+        key: String,
+        timeout_millis: Option<u32>,
+    },
+    Text {
+        text: String,
+        timeout_millis: Option<u32>,
+    },
+    Delay {
+        delay: u64,
+    },
+    Progress {
+        progress: ProgressWidgetType,
+        timeout_millis: Option<u32>,
+    },
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
-pub struct Tap {
-    #[serde(flatten)]
-    pub target: Target,
+
+pub struct ScrollTarget {
+    pub by: FindBy,
+    pub delta: Offset,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+#[serde(untagged)]
+pub enum PointerAction {
+    Move { to: Offset, remove: bool },
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+pub struct Offset {
+    pub x: i32,
+    pub y: i32,
+}
+
+#[derive(Debug, Deserialize, JsonSchema)]
+#[serde(untagged)]
+pub enum FindBy {
+    Key { key: String },
+    Text { text: String },
+    Placeholder { placeholder: String },
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]
 pub struct TypeAction {
-    pub by: Target,
+    pub by: FindBy,
     pub value: String,
 }
 
@@ -67,13 +125,6 @@ pub struct TypeAction {
 pub struct Match {
     #[serde(flatten)]
     pub target: MatchTarget,
-}
-
-#[derive(Debug, Deserialize, JsonSchema)]
-#[serde(untagged)]
-pub enum Target {
-    Text { text: String },
-    Placeholder { placeholder: String },
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]

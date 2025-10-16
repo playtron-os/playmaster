@@ -1,9 +1,8 @@
 // GENERATED FILE - DO NOT EDIT
+import 'dart:ui';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter/material.dart';
 import 'package:integration_test/integration_test.dart';
-import 'package:sample_app/main.dart' as app;
-
 import 'helpers.dart';
 import 'vars.dart';
 
@@ -15,26 +14,56 @@ void main() {
 
   group('First Time User Experience', () {
     testWidgets('Successful Login', (tester) async {
-      await tester.setTestResolution();
+      await tester.initializeTest();
 
-      app.main();
+      //
+      await tester.pumpUntilFound(
+        find.text('Login'),
+        timeout: Duration(milliseconds: 5000),
+      );
+
+      //
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byPlaceholder('Email'),
+        kind: PointerDeviceKind.mouse,
+      );
       await tester.pumpAndSettle();
 
-      await tester.pumpUntilFound(find.text('Login'));
-      await tester.tap(find.byPlaceholder('Email'));
+      //
+      await tester.pumpAndSettle();
       await tester.enterText(
         find.byPlaceholder('Email'),
         Common.validEmail,
       );
+      await tester.pumpAndSettle();
+
+      //
+      await tester.pumpAndSettle();
       await tester.enterText(
         find.byPlaceholder('Password'),
         validPassword,
       );
-      await tester.tap(find.text('Sign In'));
+      await tester.pumpAndSettle();
+
+      //
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Sign In'), kind: PointerDeviceKind.mouse);
+      await tester.pumpAndSettle();
+
+      //
       await tester.pumpUntilProgressCompleted(
         find.byType(LinearProgressIndicator),
+        timeout: Duration(milliseconds: 30000),
       );
-      await tester.pumpUntilFound(find.text('Welcome'));
+
+      //
+      await tester.pumpUntilFound(
+        find.text('Welcome'),
+        timeout: Duration(milliseconds: 5000),
+      );
+
+      //
       await tester.compareScreenshot(
         'first_time_user_experience_test',
         'screenshot_welcome',
@@ -42,23 +71,47 @@ void main() {
     });
 
     testWidgets('Invalid Login', (tester) async {
-      await tester.setTestResolution();
+      await tester.initializeTest();
 
-      app.main();
+      //
+      await tester.pumpUntilFound(
+        find.text('Login'),
+        timeout: Duration(milliseconds: 5000),
+      );
+
+      //
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.byPlaceholder('Email'),
+        kind: PointerDeviceKind.mouse,
+      );
       await tester.pumpAndSettle();
 
-      await tester.pumpUntilFound(find.text('Login'));
-      await tester.tap(find.byPlaceholder('Email'));
+      //
+      await tester.pumpAndSettle();
       await tester.enterText(
         find.byPlaceholder('Email'),
         Common.validEmail,
       );
+      await tester.pumpAndSettle();
+
+      //
+      await tester.pumpAndSettle();
       await tester.enterText(
         find.byPlaceholder('Password'),
         invalidPassword,
       );
-      await tester.tap(find.text('Sign In'));
+      await tester.pumpAndSettle();
+
+      //
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Sign In'), kind: PointerDeviceKind.mouse);
+      await tester.pumpAndSettle();
+
+      //
       await tester.pump(Duration(milliseconds: 1000));
+
+      //
       expect(find.text('Invalid credentials'), findsOneWidget);
     });
   });

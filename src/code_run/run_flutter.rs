@@ -5,6 +5,8 @@ use std::{
     process::{Child, Command, Stdio},
 };
 
+use serde_yaml::{Mapping, Value};
+use tempfile::NamedTempFile;
 use tracing::{error, info};
 
 use crate::{
@@ -13,7 +15,9 @@ use crate::{
     models::{app_state::RemoteInfo, config::ProjectType, feature_test::FeatureTest},
     utils::{
         self,
-        errors::{EmptyResult, ResultTrait as _, ResultWithError},
+        command::CommandUtils,
+        errors::{EmptyResult, ResultWithError},
+        flutter::FlutterUtils,
     },
 };
 
@@ -163,18 +167,66 @@ impl RunFlutter {
         Ok(())
     }
 
+    fn cleaned_pubspec(&self, content: &str) -> ResultWithError<String> {
+        // Parse pubspec.yaml into a YAML value tree
+        let mut root: Value = serde_yaml::from_str(content)?;
+        let map = root
+            .as_mapping_mut()
+            .ok_or("pubspec.yaml root is not a mapping")?;
+
+        // Build: dependencies: { flutter: { sdk: flutter } }
+        let mut deps = Mapping::new();
+        let mut flutter = Mapping::new();
+        flutter.insert(Value::from("sdk"), Value::from("flutter"));
+        deps.insert(Value::from("flutter"), Value::Mapping(flutter));
+        map.insert(Value::from("dependencies"), Value::Mapping(deps));
+
+        // Build: dev_dependencies: { flutter_test: { sdk: flutter }, integration_test: { sdk: flutter } }
+        let mut dev_deps = Mapping::new();
+
+        let mut flutter_test = Mapping::new();
+        flutter_test.insert(Value::from("sdk"), Value::from("flutter"));
+        dev_deps.insert(Value::from("flutter_test"), Value::Mapping(flutter_test));
+
+        let mut integration_test = Mapping::new();
+        integration_test.insert(Value::from("sdk"), Value::from("flutter"));
+        dev_deps.insert(
+            Value::from("integration_test"),
+            Value::Mapping(integration_test),
+        );
+
+        map.insert(Value::from("dev_dependencies"), Value::Mapping(dev_deps));
+
+        map.remove(Value::from("dependency_overrides"));
+
+        let out = serde_yaml::to_string(&root)?;
+        Ok(out)
+    }
+
     fn sync_pubspec(&self, remote: Option<&RemoteInfo>, exec_dir: &Path) -> EmptyResult {
         let local_pubspec_file = utils::dir::DirUtils::curr_dir()?.join("pubspec.yaml");
         let remote_pubspec_file = exec_dir.join("pubspec.yaml");
 
-        if let Some(remote) = remote {
-            info!("Syncing pubspec.yaml to remote...");
+        // Read local pubspec.yaml
+        let original = fs::read_to_string(&local_pubspec_file)?;
 
+        // Sanitize dependencies/dev_dependencies
+        let cleaned = self.cleaned_pubspec(&original)?;
+
+        // Write to temp file
+        let temp = NamedTempFile::new()?;
+        fs::write(temp.path(), &cleaned)?;
+
+        // Send to remote (or write locally as fallback)
+        if let Some(remote) = remote {
+            info!("Syncing cleaned pubspec.yaml to remote…");
             utils::command::CommandUtils::copy_file_to_remote(
                 remote,
-                local_pubspec_file.to_string_lossy().as_ref(),
+                temp.path().to_string_lossy().as_ref(),
                 &remote_pubspec_file,
             )?;
+        } else {
+            fs::write(&remote_pubspec_file, cleaned)?;
         }
 
         Ok(())
@@ -197,8 +249,9 @@ impl RunFlutter {
             "cd {} && DISPLAY={} {}",
             exec_dir.display(),
             self.get_display(),
-            self.get_flutter_drive_command_str(exec_dir)?,
+            self.get_flutter_drive_command_str()?,
         );
+        info!("Remote command: {}\n", cmd);
 
         let output = remote.exec_remote_stream(&cmd)?;
         self.process_remote_output(output, features)
@@ -212,7 +265,7 @@ impl RunFlutter {
         let mut command = Command::new("sh");
         command
             .current_dir(exec_dir)
-            .args(["-c", &self.get_flutter_drive_command_str(exec_dir)?])
+            .args(["-c", &self.get_flutter_drive_command_str()?])
             .env("DISPLAY", self.get_display())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
@@ -220,21 +273,8 @@ impl RunFlutter {
         Ok(command.spawn()?)
     }
 
-    fn get_flutter_drive_command_str(&self, exec_dir: &Path) -> ResultWithError<String> {
-        let parent_folder_name = exec_dir
-            .file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or("unknown");
-
-        let pubspec_path = exec_dir.join("pubspec.yaml");
-        let content = fs::read_to_string(pubspec_path).auto_err("Could not read pubspec file")?;
-        let pubspec: serde_yaml::Value =
-            serde_yaml::from_str(&content).auto_err("Invalid config format")?;
-
-        let binary_name = pubspec
-            .get("name")
-            .and_then(|v| v.as_str())
-            .unwrap_or(parent_folder_name);
+    fn get_flutter_drive_command_str(&self) -> ResultWithError<String> {
+        let binary_name = FlutterUtils::get_name()?;
 
         let binary = format!("build/linux/x64/debug/bundle/{binary_name}");
         let binary_arg = format!("--use-application-binary={binary}");
@@ -340,7 +380,7 @@ impl RunFlutter {
                         }
                         error!("Test output...");
                         for line in current_test_output.lines() {
-                            error!("    {}", line);
+                            error!("    {}", CommandUtils::unescape_ansi(line.to_owned()));
                         }
                         error!("End of test output\n");
                     } else if curr_passed != passed {

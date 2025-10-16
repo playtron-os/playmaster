@@ -1,4 +1,7 @@
-use std::{fs, path::PathBuf};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 
 use serde::de::DeserializeOwned;
 
@@ -51,7 +54,7 @@ impl DirUtils {
     }
 
     fn find_all_yaml<T>(
-        config_path: &PathBuf,
+        config_path: &Path,
         yaml_type: YamlType,
     ) -> ResultWithError<Vec<YamlResult<T>>>
     where
@@ -63,27 +66,36 @@ impl DirUtils {
             YamlType::Vars => vec![".vars.yaml", ".vars.yml"],
         };
 
-        // Iterate over all YAML files
-        for entry in fs::read_dir(config_path).auto_err("Could not read directory")? {
-            let entry = entry.auto_err("Could not read directory entry")?;
-            let path = entry.path();
-            let Some(file_name) = path.file_name() else {
-                continue;
-            };
-            let file_name = file_name.to_string_lossy().to_string();
+        // Use an explicit stack to traverse directories recursively
+        let mut dirs = vec![config_path.to_path_buf()];
 
-            // Only process .yaml or .yml files
-            if ends_with.iter().any(|ending| file_name.ends_with(ending)) {
-                let content = fs::read_to_string(&path)
-                    .auto_err(&format!("Failed to read file: {:?}", path))?;
+        while let Some(dir) = dirs.pop() {
+            for entry in fs::read_dir(&dir).auto_err("Could not read directory")? {
+                let entry = entry.auto_err("Could not read directory entry")?;
+                let path = entry.path();
 
-                let feature: T = serde_yaml::from_str(&content)
-                    .auto_err(&format!("Failed to parse YAML: {:?}", path))?;
+                if path.is_dir() {
+                    dirs.push(path);
+                    continue;
+                }
 
-                features.push(YamlResult {
-                    file_name,
-                    content: feature,
-                });
+                let Some(file_name) = path.file_name() else {
+                    continue;
+                };
+                let file_name = file_name.to_string_lossy().to_string();
+
+                if ends_with.iter().any(|ending| file_name.ends_with(ending)) {
+                    let content = fs::read_to_string(&path)
+                        .auto_err(&format!("Failed to read file: {:?}", path))?;
+
+                    let feature: T = serde_yaml::from_str(&content)
+                        .auto_err(&format!("Failed to parse YAML: {:?}", path))?;
+
+                    features.push(YamlResult {
+                        file_name,
+                        content: feature,
+                    });
+                }
             }
         }
 

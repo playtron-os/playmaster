@@ -14,6 +14,7 @@ tests:
     steps:
       - wait_for:
           text: "Login"
+          timeout_millis: 5000
       - tap:
           placeholder: "Email"
       - type:

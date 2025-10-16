@@ -1,6 +1,7 @@
 use std::{io::Read as _, path::Path, process::Command, time::Duration};
 
 use indicatif::{ProgressBar, ProgressStyle};
+use regex::Regex;
 
 use crate::{
     models::app_state::{CommandOutput, RemoteInfo},
@@ -131,5 +132,33 @@ impl CommandUtils {
         spinner.set_message(msg);
         spinner.enable_steady_tick(Duration::from_millis(80));
         spinner
+    }
+
+    pub fn unescape_ansi(mut s: String) -> String {
+        // \u001b → ESC
+        s = Regex::new(r#"\\u0*01[bB]"#)
+            .unwrap()
+            .replace_all(&s, "\x1b")
+            .into_owned();
+
+        // \e → ESC (common in some logs)
+        s = Regex::new(r#"\\e"#)
+            .unwrap()
+            .replace_all(&s, "\x1b")
+            .into_owned();
+
+        // \033 (octal) → ESC
+        s = Regex::new(r#"\\0?33"#)
+            .unwrap()
+            .replace_all(&s, "\x1b")
+            .into_owned();
+
+        // \xNN → corresponding byte
+        let re = Regex::new(r#"\\x([0-9a-fA-F]{2})"#).unwrap();
+        re.replace_all(&s, |caps: &regex::Captures| {
+            let b = u8::from_str_radix(&caps[1], 16).unwrap_or(b'?');
+            String::from_utf8_lossy(&[b]).into_owned()
+        })
+        .into_owned()
     }
 }
