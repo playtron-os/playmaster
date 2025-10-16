@@ -75,10 +75,6 @@ jobs:
         working-directory: samples/flutter_sample_app
         run: ../../target/release/playmaster gen
 
-      - name: Build Flutter app for testing
-        working-directory: samples/flutter_sample_app
-        run: flutter build linux --debug
-
       - name: Run integration tests
         working-directory: samples/flutter_sample_app
         run: |
@@ -93,3 +89,12 @@ jobs:
           # Note: Tests might fail due to UI automation limitations in CI
           # This is expected and can be refined later
           echo "Integration test run completed (may have expected failures in CI environment)"
+
+      - name: Upload failed screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: failed-screenshots
+          path: samples/flutter_sample_app/integration_test/screenshots/**/failed/**
+          if-no-files-found: ignore
+          retention-days: 7

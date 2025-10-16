@@ -215,7 +215,7 @@ impl RunFlutter {
             .args(["-c", &self.get_flutter_drive_command_str(exec_dir)?])
             .env("DISPLAY", self.get_display())
             .stdout(Stdio::piped())
-            .stderr(Stdio::inherit());
+            .stderr(Stdio::piped());
 
         Ok(command.spawn()?)
     }
@@ -239,7 +239,7 @@ impl RunFlutter {
         let binary = format!("build/linux/x64/debug/bundle/{binary_name}");
         let binary_arg = format!("--use-application-binary={binary}");
         let args = format!(
-            "--driver=test_driver/integration_test.dart --target=integration_test/generated/all_tests.dart {binary_arg} --no-headless"
+            "--driver=test_driver/integration_test.dart --target=integration_test/generated/all_tests.dart {binary_arg} --no-headless -d linux"
         );
 
         Ok(format!("flutter drive {args}"))
