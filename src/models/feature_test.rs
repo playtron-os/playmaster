@@ -45,6 +45,7 @@ pub enum ProgressWidgetType {
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(untagged)]
 pub enum WaitFor {
+    Key { key: String },
     Text { text: String },
     Delay { delay: u64 },
     Progress { progress: ProgressWidgetType },

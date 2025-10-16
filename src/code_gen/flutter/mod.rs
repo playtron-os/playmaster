@@ -121,6 +121,10 @@ impl Step {
     pub fn to_dart_code(&self, file_name: &str) -> String {
         match self {
             Step::WaitFor { wait_for } => match wait_for {
+                WaitFor::Key { key } => format!(
+                    "      await tester.pumpUntilFound(find.byKey(Key('{}')));\n",
+                    key
+                ),
                 WaitFor::Text { text } => format!(
                     "      await tester.pumpUntilFound(find.text('{}'));\n",
                     text
