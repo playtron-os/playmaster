@@ -236,8 +236,9 @@ impl RunFlutter {
         let status = output.status;
         if res.is_ok() && !status.success() {
             error!(
-                "❌ Error when running tests, status:{}, error:{}",
+                "❌ Error when running tests, status:{}, output:{}, error:{}",
                 status,
+                String::from_utf8_lossy(&output.stdout),
                 String::from_utf8_lossy(&output.stderr)
             );
             return Err("Error during tests".into());
