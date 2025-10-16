@@ -215,7 +215,8 @@ impl RunFlutter {
             .args(["-c", &self.get_flutter_drive_command_str(exec_dir)?])
             .env("DISPLAY", self.get_display())
             .stdout(Stdio::piped())
-            .stderr(Stdio::inherit());
+            .stderr(Stdio::piped());
+        println!("#### Command: {:?}", command);
 
         Ok(command.spawn()?)
     }
