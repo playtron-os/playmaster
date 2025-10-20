@@ -18,6 +18,8 @@ pub struct FeatureTest {
     pub tests: Vec<TestCase>,
     #[serde(default)]
     pub vars: HashMap<String, String>,
+    #[serde(default)]
+    pub step_definitions: HashMap<String, Vec<Step>>,
 }
 
 #[derive(Debug, Deserialize, JsonSchema, Clone)]
@@ -63,6 +65,9 @@ pub enum Step {
     },
     Pointer {
         pointer: PointerAction,
+    },
+    Use {
+        use_step: String,
     },
     Simple(SimpleStep),
 }

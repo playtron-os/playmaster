@@ -20,6 +20,15 @@
     "name": {
       "type": "string"
     },
+    "step_definitions": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "array",
+        "items": {
+          "$ref": "#/$defs/Step"
+        }
+      }
+    },
     "tests": {
       "type": "array",
       "items": {
@@ -263,6 +272,17 @@
           },
           "required": [
             "pointer"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "use_step": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "use_step"
           ]
         },
         {

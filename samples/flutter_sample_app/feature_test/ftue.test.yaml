@@ -8,6 +8,13 @@ vars:
   validPassword: "password123"
   invalidPassword: "wrongpassword"
 
+step_definitions:
+  enter_email:
+    - type:
+        by:
+          placeholder: "Email"
+        value: "{{vars.common.validEmail}}"
+
 tests:
   - name: Successful Login
     description: Enters the correct username and password and logs in
@@ -17,10 +24,7 @@ tests:
           timeout_millis: 5000
       - tap:
           placeholder: "Email"
-      - type:
-          by:
-            placeholder: "Email"
-          value: "{{vars.common.validEmail}}"
+      - use_step: enter_email
       - type:
           by:
             placeholder: "Password"

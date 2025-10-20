@@ -1,4 +1,5 @@
 use std::{
+    collections::HashMap,
     fs,
     path::{Path, PathBuf},
 };
@@ -95,7 +96,7 @@ impl FeatureTest {
         {
             let mut steps = "".to_owned();
             for step in &before_each.steps {
-                steps.push_str(&step.to_dart_code(ctx, &normalized_name));
+                steps.push_str(&step.to_dart_code(ctx, &self.step_definitions, &normalized_name));
             }
 
             out.push_str(&format!(
@@ -135,7 +136,7 @@ beforeEach(WidgetTester tester) async {{
 
             for step in &test.steps {
                 out.push_str("      //\n");
-                out.push_str(&step.to_dart_code(ctx, &normalized_name));
+                out.push_str(&step.to_dart_code(ctx, &self.step_definitions, &normalized_name));
                 out.push('\n');
             }
 
@@ -150,8 +151,24 @@ beforeEach(WidgetTester tester) async {{
 }
 
 impl Step {
-    pub fn to_dart_code(&self, ctx: &HookContext<'_, GenState>, file_name: &str) -> String {
+    pub fn to_dart_code(
+        &self,
+        ctx: &HookContext<'_, GenState>,
+        step_definitions: &HashMap<String, Vec<Step>>,
+        file_name: &str,
+    ) -> String {
         match self {
+            Step::Use { use_step } => {
+                if let Some(steps) = step_definitions.get(use_step) {
+                    let mut code = String::new();
+                    for step in steps {
+                        code.push_str(&step.to_dart_code(ctx, step_definitions, file_name));
+                    }
+                    code
+                } else {
+                    format!("      // Step definition '{}' not found.\n", use_step)
+                }
+            }
             Step::Simple(SimpleStep::Settle) => "      await tester.pumpAndSettle();\n".to_owned(),
             Step::NotFound {
                 not_found,
