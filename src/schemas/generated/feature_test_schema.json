@@ -172,11 +172,14 @@
         "delta"
       ]
     },
+    "SimpleStep": {
+      "type": "string",
+      "enum": [
+        "settle"
+      ]
+    },
     "Step": {
       "anyOf": [
-        {
-          "type": "null"
-        },
         {
           "type": "object",
           "properties": {
@@ -261,6 +264,9 @@
           "required": [
             "pointer"
           ]
+        },
+        {
+          "$ref": "#/$defs/SimpleStep"
         }
       ]
     },

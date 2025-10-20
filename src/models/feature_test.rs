@@ -33,6 +33,12 @@ pub struct BeforeEach {
     pub steps: Vec<Step>,
 }
 
+#[derive(Debug, Clone, Deserialize, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum SimpleStep {
+    Settle,
+}
+
 #[derive(Debug, Deserialize, JsonSchema)]
 #[serde(untagged)]
 pub enum Step {
@@ -58,7 +64,7 @@ pub enum Step {
     Pointer {
         pointer: PointerAction,
     },
-    Settle {},
+    Simple(SimpleStep),
 }
 
 #[derive(Debug, Deserialize, JsonSchema)]

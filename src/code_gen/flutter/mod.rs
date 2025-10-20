@@ -8,7 +8,7 @@ use crate::{
     models::{
         args::AppArgs,
         config::{Config, ProjectType},
-        feature_test::{self, FeatureTest, Step, WaitFor},
+        feature_test::{self, FeatureTest, SimpleStep, Step, WaitFor},
     },
     utils::{
         dir::DirUtils,
@@ -147,7 +147,7 @@ beforeEach(WidgetTester tester) async {{
 impl Step {
     pub fn to_dart_code(&self, file_name: &str) -> String {
         match self {
-            Step::Settle {} => "      await tester.pumpAndSettle();\n".to_owned(),
+            Step::Simple(SimpleStep::Settle) => "      await tester.pumpAndSettle();\n".to_owned(),
             Step::NotFound {
                 not_found,
                 timeout_millis,
