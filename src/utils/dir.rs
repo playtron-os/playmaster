@@ -15,6 +15,7 @@ pub enum YamlType {
     Vars,
 }
 
+#[derive(Debug)]
 pub struct YamlResult<T> {
     pub file_name: String,
     pub content: T,
@@ -85,6 +86,16 @@ impl DirUtils {
                 let file_name = file_name.to_string_lossy().to_string();
 
                 if ends_with.iter().any(|ending| file_name.ends_with(ending)) {
+                    let Some(file_name) = file_name
+                        .strip_suffix(".vars.yaml")
+                        .or_else(|| file_name.strip_suffix(".vars.yml"))
+                        .or_else(|| file_name.strip_suffix(".test.yaml"))
+                        .or_else(|| file_name.strip_suffix(".test.yml"))
+                        .or_else(|| file_name.strip_suffix(".yaml"))
+                    else {
+                        continue;
+                    };
+
                     let content = fs::read_to_string(&path)
                         .auto_err(&format!("Failed to read file: {:?}", path))?;
 
@@ -92,7 +103,7 @@ impl DirUtils {
                         .auto_err(&format!("Failed to parse YAML: {:?}", path))?;
 
                     features.push(YamlResult {
-                        file_name,
+                        file_name: file_name.to_string(),
                         content: feature,
                     });
                 }

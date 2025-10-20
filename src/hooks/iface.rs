@@ -7,6 +7,7 @@ use crate::{
         app_state::{AppState, RemoteInfo},
         args::AppArgs,
         config::Config,
+        vars::Vars,
     },
     utils::errors::{EmptyResult, ResultTrait, ResultWithError},
 };
@@ -45,19 +46,22 @@ impl HookType {
 /// Context passed to all hooks during execution providing access to CLI args,
 /// configuration, and shared mutable application state.
 #[allow(dead_code)]
-pub struct HookContext<'a> {
+pub struct HookContext<'a, State> {
     pub args: &'a AppArgs,
     pub config: &'a Config,
-    pub state: Arc<RwLock<AppState>>,
+    pub vars: &'a Vars,
+    pub state: Arc<RwLock<State>>,
 }
 
-impl<'a> HookContext<'a> {
-    pub fn read_state(&self) -> ResultWithError<std::sync::RwLockReadGuard<'_, AppState>> {
+impl<'a, State> HookContext<'a, State> {
+    pub fn read_state(&self) -> ResultWithError<std::sync::RwLockReadGuard<'_, State>> {
         self.state
             .read()
             .auto_err("Failed to acquire read lock for state")
     }
+}
 
+impl<'a> HookContext<'a, AppState> {
     pub fn initiate_remote(&self, remote: RemoteInfo) -> EmptyResult {
         let mut state = self
             .state
@@ -71,7 +75,7 @@ impl<'a> HookContext<'a> {
 /// Trait that all hook implementations must adhere to.
 pub trait Hook {
     fn get_type(&self) -> HookType;
-    fn run(&self, ctx: &HookContext) -> EmptyResult;
+    fn run(&self, ctx: &HookContext<'_, AppState>) -> EmptyResult;
 }
 
 pub trait HookListExt {

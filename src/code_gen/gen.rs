@@ -1,10 +1,16 @@
-use std::fs;
+use std::{
+    fs,
+    sync::{Arc, RwLock},
+};
 
 use tracing::info;
 
 use crate::{
     code_gen::{flutter::GenFlutter, gen_iface::CodeGenTrait},
-    models::{args::AppArgs, config::Config, feature_test::FeatureTest},
+    hooks::iface::HookContext,
+    models::{
+        args::AppArgs, config::Config, feature_test::FeatureTest, gen_state::GenState, vars::Vars,
+    },
     utils::{
         dir::DirUtils,
         errors::{EmptyResult, ResultWithError},
@@ -15,11 +21,12 @@ use crate::{
 pub struct CodeGen {
     args: AppArgs,
     config: Config,
+    vars: Vars,
 }
 
 impl CodeGen {
-    pub fn new(args: AppArgs, config: Config) -> Self {
-        Self { args, config }
+    pub fn new(args: AppArgs, config: Config, vars: Vars) -> Self {
+        Self { args, config, vars }
     }
 
     pub fn execute(&self) -> EmptyResult {
@@ -42,6 +49,15 @@ impl CodeGen {
             return Ok(());
         }
 
+        let state = GenState { features };
+        let state = Arc::new(RwLock::new(state));
+        let ctx = HookContext {
+            args: &self.args,
+            config: &self.config,
+            vars: &self.vars,
+            state: Arc::clone(&state),
+        };
+
         let cwd = DirUtils::curr_dir()?;
         let out_dir = cwd.join("integration_test/generated");
 
@@ -50,7 +66,7 @@ impl CodeGen {
 
         let generators = self.get_generators()?;
         for generator in generators {
-            generator.run(&features)?;
+            generator.run(&ctx)?;
         }
 
         Ok(())

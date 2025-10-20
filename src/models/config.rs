@@ -32,7 +32,7 @@ impl Config {
     pub fn from_curr_dir() -> ResultWithError<Self> {
         let config_path = DirUtils::curr_dir()?.join("playmaster.yaml");
         let content = fs::read_to_string(config_path).auto_err("Could not read config file")?;
-        let expanded = VariablesUtils::expand_env_vars(&content)?;
+        let expanded = VariablesUtils::expand_env_vars(&content);
         let mut config: Config =
             serde_yaml::from_str(&expanded).auto_err("Invalid config format")?;
         config.load_default_configs();

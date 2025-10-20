@@ -6,7 +6,11 @@ use tracing::info;
 
 use crate::{
     hooks::iface::{Hook, HookContext, HookType},
-    models::{self, app_state::RemoteInfo, args::AppMode},
+    models::{
+        self,
+        app_state::{AppState, RemoteInfo},
+        args::AppMode,
+    },
     utils::errors::{EmptyResult, OptionResultTrait, ResultTrait as _, ResultWithError},
 };
 
@@ -64,7 +68,7 @@ impl HookConnect {
         }
     }
 
-    fn establish_ssh_connection(&self, ctx: &HookContext) -> EmptyResult {
+    fn establish_ssh_connection(&self, ctx: &HookContext<'_, AppState>) -> EmptyResult {
         let remote_addr = if let models::args::Command::Run { remote_addr, .. } = &ctx.args.command
         {
             if let Some(addr) = remote_addr {
@@ -126,7 +130,7 @@ impl Hook for HookConnect {
         HookType::Connect
     }
 
-    fn run(&self, ctx: &HookContext) -> EmptyResult {
+    fn run(&self, ctx: &HookContext<'_, AppState>) -> EmptyResult {
         if let models::args::Command::Run {
             mode: Some(mode), ..
         } = &ctx.args.command

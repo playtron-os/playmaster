@@ -4,7 +4,7 @@ use tracing::info;
 use crate::{
     code_gen::r#gen::CodeGen,
     code_run::run::CodeRun,
-    models::{args::AppArgs, config::Config},
+    models::{args::AppArgs, config::Config, vars::Vars},
     schemas::schema_gen::SchemaGen,
     utils::{errors::EmptyResult, logger::LoggerUtils},
 };
@@ -35,12 +35,14 @@ fn main() -> EmptyResult {
     match args.command {
         models::args::Command::Run { .. } => {
             let config = Config::from_curr_dir()?;
-            let run = CodeRun::new(args, config);
+            let vars = Vars::all_from_curr_dir()?;
+            let run = CodeRun::new(args, config, vars);
             run.execute()?;
         }
         models::args::Command::Gen => {
             let config = Config::from_curr_dir()?;
-            let code_gen = CodeGen::new(args, config);
+            let vars = Vars::all_from_curr_dir()?;
+            let code_gen = CodeGen::new(args, config, vars);
             code_gen.execute()?;
         }
         models::args::Command::Schema => {

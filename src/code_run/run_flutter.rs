@@ -12,7 +12,11 @@ use tracing::{error, info};
 use crate::{
     code_run::run_iface::CodeRunTrait,
     hooks::iface::HookContext,
-    models::{app_state::RemoteInfo, config::ProjectType, feature_test::FeatureTest},
+    models::{
+        app_state::{AppState, RemoteInfo},
+        config::ProjectType,
+        feature_test::FeatureTest,
+    },
     utils::{
         self,
         command::CommandUtils,
@@ -29,7 +33,7 @@ impl CodeRunTrait for RunFlutter {
         ProjectType::Flutter
     }
 
-    fn run(&self, ctx: &HookContext, features: &[FeatureTest]) -> EmptyResult {
+    fn run(&self, ctx: &HookContext<'_, AppState>, features: &[FeatureTest]) -> EmptyResult {
         let state = ctx.read_state()?;
         let remote = state.remote.as_ref();
 

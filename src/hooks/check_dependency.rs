@@ -6,7 +6,7 @@ use tracing::{error, info};
 use crate::{
     hooks::iface::{Hook, HookContext, HookType},
     models::{
-        app_state::RemoteInfo,
+        app_state::{AppState, RemoteInfo},
         args::{AppArgs, Command},
         config::{Dependency, InstallSource, InstallSpec},
     },
@@ -67,7 +67,7 @@ impl HookCheckDependency {
 
     fn download_tool(
         &self,
-        ctx: &HookContext,
+        ctx: &HookContext<'_, AppState>,
         source: &InstallSource,
         version: Option<String>,
     ) -> ResultWithError<String> {
@@ -174,7 +174,7 @@ impl HookCheckDependency {
         Ok(())
     }
 
-    fn install_tool(&self, ctx: &HookContext, install: &InstallSpec) -> EmptyResult {
+    fn install_tool(&self, ctx: &HookContext<'_, AppState>, install: &InstallSpec) -> EmptyResult {
         self.prompt_install(ctx.args, install)?;
 
         let state = ctx.read_state()?;
@@ -198,7 +198,7 @@ impl HookCheckDependency {
 
     fn validate_dependency(
         &self,
-        ctx: &HookContext,
+        ctx: &HookContext<'_, AppState>,
         dep: &Dependency,
         can_install: bool,
     ) -> ResultWithError<bool> {
@@ -281,7 +281,7 @@ impl Hook for HookCheckDependency {
         HookType::VerifySystem
     }
 
-    fn run(&self, ctx: &HookContext) -> EmptyResult {
+    fn run(&self, ctx: &HookContext<'_, AppState>) -> EmptyResult {
         info!("Checking dependencies...");
 
         for dep in ctx.config.dependencies.iter() {

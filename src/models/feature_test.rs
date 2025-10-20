@@ -9,7 +9,7 @@ use crate::utils::{
 };
 
 #[allow(dead_code)]
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, Clone)]
 pub struct FeatureTest {
     pub name: String,
     #[serde(default)]
@@ -20,26 +20,26 @@ pub struct FeatureTest {
     pub vars: HashMap<String, String>,
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, Clone)]
 pub struct TestCase {
     pub name: String,
     pub description: String,
     pub steps: Vec<Step>,
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, Clone)]
 pub struct BeforeEach {
     #[serde(default)]
     pub steps: Vec<Step>,
 }
 
-#[derive(Debug, Clone, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, Clone)]
 #[serde(rename_all = "snake_case")]
 pub enum SimpleStep {
     Settle,
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, Clone)]
 #[serde(untagged)]
 pub enum Step {
     WaitFor {
@@ -67,14 +67,14 @@ pub enum Step {
     Simple(SimpleStep),
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, Clone)]
 #[serde(rename_all = "snake_case")]
 pub enum ProgressWidgetType {
     Linear,
     Radial,
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, Clone)]
 #[serde(untagged)]
 pub enum WaitFor {
     Key {
@@ -94,26 +94,26 @@ pub enum WaitFor {
     },
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, Clone)]
 
 pub struct ScrollTarget {
     pub by: FindBy,
     pub delta: Offset,
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, Clone)]
 #[serde(untagged)]
 pub enum PointerAction {
     Move { to: Offset, remove: bool },
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, Clone)]
 pub struct Offset {
     pub x: i32,
     pub y: i32,
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, Clone)]
 #[serde(untagged)]
 pub enum FindBy {
     Key { key: String },
@@ -121,19 +121,19 @@ pub enum FindBy {
     Placeholder { placeholder: String },
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, Clone)]
 pub struct TypeAction {
     pub by: FindBy,
     pub value: String,
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, Clone)]
 pub struct Match {
     #[serde(flatten)]
     pub target: MatchTarget,
 }
 
-#[derive(Debug, Deserialize, JsonSchema)]
+#[derive(Debug, Deserialize, JsonSchema, Clone)]
 #[serde(untagged)]
 pub enum MatchTarget {
     Text { text: String },

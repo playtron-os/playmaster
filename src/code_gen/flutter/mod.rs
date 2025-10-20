@@ -5,10 +5,12 @@ use std::{
 
 use crate::{
     code_gen::gen_iface::CodeGenTrait,
+    hooks::iface::HookContext,
     models::{
         args::AppArgs,
         config::{Config, ProjectType},
         feature_test::{self, FeatureTest, SimpleStep, Step, WaitFor},
+        gen_state::GenState,
     },
     utils::{
         dir::DirUtils,
@@ -34,15 +36,18 @@ impl CodeGenTrait for GenFlutter {
         ProjectType::Flutter
     }
 
-    fn run(&self, features: &[FeatureTest]) -> EmptyResult {
+    fn run(&self, ctx: &HookContext<'_, GenState>) -> EmptyResult {
         self.generate_helpers()?;
 
-        for feature in features {
-            feature.generate_dart(&self.out_dir)?;
+        {
+            let features = &ctx.read_state()?.features;
+            for feature in features {
+                feature.generate_dart(ctx, &self.out_dir)?;
+            }
+            self.generate_all_entrypoint(features)?;
         }
 
-        self.generate_vars()?;
-        self.generate_all_entrypoint(features)?;
+        self.generate_vars(ctx)?;
         self.generate_test_driver()?;
         self.run_dart_format();
         self.run_dart_fix();
@@ -66,7 +71,7 @@ impl GenFlutter {
 }
 
 impl FeatureTest {
-    pub fn generate_dart(&self, out_dir: &Path) -> EmptyResult {
+    pub fn generate_dart(&self, ctx: &HookContext<'_, GenState>, out_dir: &Path) -> EmptyResult {
         let normalized_name = self.name.to_lowercase().replace(' ', "_") + "_test";
         let file_name = normalized_name.clone() + ".dart";
         let file_path = out_dir.join(&file_name);
@@ -90,7 +95,7 @@ impl FeatureTest {
         {
             let mut steps = "".to_owned();
             for step in &before_each.steps {
-                steps.push_str(&step.to_dart_code(&normalized_name));
+                steps.push_str(&step.to_dart_code(ctx, &normalized_name));
             }
 
             out.push_str(&format!(
@@ -130,7 +135,7 @@ beforeEach(WidgetTester tester) async {{
 
             for step in &test.steps {
                 out.push_str("      //\n");
-                out.push_str(&step.to_dart_code(&normalized_name));
+                out.push_str(&step.to_dart_code(ctx, &normalized_name));
                 out.push('\n');
             }
 
@@ -145,7 +150,7 @@ beforeEach(WidgetTester tester) async {{
 }
 
 impl Step {
-    pub fn to_dart_code(&self, file_name: &str) -> String {
+    pub fn to_dart_code(&self, ctx: &HookContext<'_, GenState>, file_name: &str) -> String {
         match self {
             Step::Simple(SimpleStep::Settle) => "      await tester.pumpAndSettle();\n".to_owned(),
             Step::NotFound {
@@ -153,7 +158,7 @@ impl Step {
                 timeout_millis,
             } => format!(
                 "      await tester.waitUntilGone({}, timeout: {});\n",
-                Self::find_by(not_found),
+                Self::find_by(ctx, not_found),
                 Self::duration(*timeout_millis, 10000)
             ),
             Step::WaitFor { wait_for } => match wait_for {
@@ -162,7 +167,7 @@ impl Step {
                     timeout_millis,
                 } => format!(
                     "      await tester.pumpUntilFound(find.byKey(Key('{}')), timeout: {});\n",
-                    key,
+                    ctx.vars.replace_var_usage(key),
                     Self::duration(*timeout_millis, 5000)
                 ),
                 WaitFor::Text {
@@ -170,7 +175,7 @@ impl Step {
                     timeout_millis,
                 } => format!(
                     "      await tester.pumpUntilFound(find.text('{}'), timeout: {});\n",
-                    text,
+                    ctx.vars.replace_var_usage(text),
                     Self::duration(*timeout_millis, 5000)
                 ),
                 WaitFor::Delay { delay } => format!(
@@ -193,27 +198,31 @@ impl Step {
             },
             Step::Tap { tap } => format!(
                 "      await tester.pumpAndSettle();\n      await tester.tap({}, kind: PointerDeviceKind.mouse);\n      await tester.pumpAndSettle();\n",
-                Self::find_by(tap)
+                Self::find_by(ctx, tap)
             ),
             Step::Type { r#type } => format!(
                 "      await tester.pumpAndSettle();\n      await tester.enterText({}, '{}');\n      await tester.pumpAndSettle();\n",
-                Self::find_by(&r#type.by),
-                r#type.value
+                Self::find_by(ctx, &r#type.by),
+                ctx.vars.replace_var_usage(&r#type.value)
             ),
             Step::Match { r#match } => match &r#match.target {
                 feature_test::MatchTarget::Text { text } => {
-                    format!("      expect(find.text('{}'), findsOneWidget);\n", text)
+                    format!(
+                        "      expect(find.text('{}'), findsOneWidget);\n",
+                        ctx.vars.replace_var_usage(text)
+                    )
                 }
                 feature_test::MatchTarget::Screenshot { screenshot } => {
                     format!(
                         "      await tester.compareScreenshot('{}', '{}');\n",
-                        file_name, screenshot
+                        file_name,
+                        ctx.vars.replace_var_usage(screenshot)
                     )
                 }
             },
             Step::Scroll { scroll } => format!(
                 "      await tester.drag({}, const Offset({}, {}));\n",
-                Self::find_by(&scroll.by),
+                Self::find_by(ctx, &scroll.by),
                 scroll.delta.x,
                 scroll.delta.y
             ),
@@ -226,12 +235,19 @@ impl Step {
         }
     }
 
-    fn find_by(by: &feature_test::FindBy) -> String {
+    fn find_by(ctx: &HookContext<'_, GenState>, by: &feature_test::FindBy) -> String {
         match by {
-            feature_test::FindBy::Key { key } => format!("find.byKey(Key('{}'))", key),
-            feature_test::FindBy::Text { text } => format!("find.text('{}')", text),
+            feature_test::FindBy::Key { key } => {
+                format!("find.byKey(Key('{}'))", ctx.vars.replace_var_usage(key))
+            }
+            feature_test::FindBy::Text { text } => {
+                format!("find.text('{}')", ctx.vars.replace_var_usage(text))
+            }
             feature_test::FindBy::Placeholder { placeholder } => {
-                format!("find.byPlaceholder('{}')", placeholder)
+                format!(
+                    "find.byPlaceholder('{}')",
+                    ctx.vars.replace_var_usage(placeholder)
+                )
             }
         }
     }

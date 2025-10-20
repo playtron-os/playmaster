@@ -13,6 +13,7 @@ use crate::{
         args::{AppArgs, Command},
         config::Config,
         feature_test::FeatureTest,
+        vars::Vars,
     },
     utils::errors::{EmptyResult, OptionResultTrait},
 };
@@ -21,17 +22,19 @@ use crate::{
 pub struct CodeRun {
     args: AppArgs,
     config: Config,
+    vars: Vars,
     hooks: Vec<Box<dyn hooks::iface::Hook>>,
     state: Arc<RwLock<AppState>>,
 }
 
 impl CodeRun {
-    pub fn new(args: AppArgs, config: Config) -> Self {
+    pub fn new(args: AppArgs, config: Config, vars: Vars) -> Self {
         let hooks = Self::load_hooks(&config);
         let state = Arc::new(RwLock::new(AppState::default()));
         Self {
             args,
             config,
+            vars,
             hooks,
             state,
         }
@@ -52,7 +55,7 @@ impl CodeRun {
 
     fn run_hooks_of_type(
         &self,
-        ctx: &HookContext,
+        ctx: &HookContext<'_, AppState>,
         hook_type: hooks::iface::HookType,
     ) -> EmptyResult {
         let hooks_to_run = self.hooks.hooks_of_type(hook_type);
@@ -73,6 +76,7 @@ impl CodeRun {
         let ctx = HookContext {
             args: &self.args,
             config: &self.config,
+            vars: &self.vars,
             state: Arc::clone(&self.state),
         };
 
@@ -91,7 +95,11 @@ impl CodeRun {
         Ok(())
     }
 
-    fn run_tests(&self, ctx: &HookContext, features: Vec<FeatureTest>) -> EmptyResult {
+    fn run_tests(
+        &self,
+        ctx: &HookContext<'_, AppState>,
+        features: Vec<FeatureTest>,
+    ) -> EmptyResult {
         if let Command::Run { setup: true, .. } = self.args.command {
             info!("Setup flag detected, performing only setup tasks without executing tests.");
             return Ok(());

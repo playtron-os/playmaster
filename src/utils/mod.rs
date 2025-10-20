@@ -8,4 +8,5 @@ pub mod logger;
 pub mod os;
 pub mod semver;
 pub mod shlex;
+pub mod string;
 pub mod variables;

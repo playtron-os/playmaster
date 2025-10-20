@@ -6,7 +6,10 @@ use uuid::Uuid;
 
 use crate::{
     hooks::iface::{Hook, HookContext, HookType},
-    models::{app_state::RemoteInfo, config::HookConfig},
+    models::{
+        app_state::{AppState, RemoteInfo},
+        config::HookConfig,
+    },
     utils::{
         command::CommandUtils,
         errors::{EmptyResult, ResultTrait},
@@ -212,7 +215,7 @@ impl Hook for HookCustom {
         self.config.hook_type
     }
 
-    fn run(&self, ctx: &HookContext) -> EmptyResult {
+    fn run(&self, ctx: &HookContext<'_, AppState>) -> EmptyResult {
         info!("Executing custom hook: {}", self.config.name);
 
         if let Some(remote) = &ctx.state.read().unwrap().remote {

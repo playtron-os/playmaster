@@ -20,11 +20,11 @@ tests:
       - type:
           by:
             placeholder: "Email"
-          value: "${Common.validEmail}"
+          value: "{{vars.common.validEmail}}"
       - type:
           by:
             placeholder: "Password"
-          value: "${validPassword}"
+          value: "{{vars.validPassword}}"
       - tap:
           text: "Sign In"
       - wait_for:
@@ -44,11 +44,11 @@ tests:
       - type:
           by:
             placeholder: "Email"
-          value: "${Common.validEmail}"
+          value: "{{vars.common.validEmail}}"
       - type:
           by:
             placeholder: "Password"
-          value: "${invalidPassword}"
+          value: "{{vars.invalidPassword}}"
       - tap:
           text: "Sign In"
       - wait_for:

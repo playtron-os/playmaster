@@ -34,7 +34,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.enterText(
         find.byPlaceholder('Email'),
-        Common.validEmail,
+        '${Common.validEmail}',
       );
       await tester.pumpAndSettle();
 
@@ -42,7 +42,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.enterText(
         find.byPlaceholder('Password'),
-        validPassword,
+        '${validPassword}',
       );
       await tester.pumpAndSettle();
 
@@ -91,7 +91,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.enterText(
         find.byPlaceholder('Email'),
-        Common.validEmail,
+        '${Common.validEmail}',
       );
       await tester.pumpAndSettle();
 
@@ -99,7 +99,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.enterText(
         find.byPlaceholder('Password'),
-        invalidPassword,
+        '${invalidPassword}',
       );
       await tester.pumpAndSettle();
 
