@@ -14,7 +14,7 @@ void main() {
 
   group('First Time User Experience', () {
     testWidgets('Successful Login', (tester) async {
-      await tester.initializeTest();
+      await tester.initializeTest('');
 
       //
       await tester.pumpUntilFound(
@@ -71,7 +71,7 @@ void main() {
     });
 
     testWidgets('Invalid Login', (tester) async {
-      await tester.initializeTest();
+      await tester.initializeTest('');
 
       //
       await tester.pumpUntilFound(

@@ -294,10 +294,15 @@
       "type": "object",
       "properties": {
         "description": {
-          "type": "string"
+          "type": "string",
+          "default": ""
         },
         "name": {
           "type": "string"
+        },
+        "state": {
+          "type": "string",
+          "default": ""
         },
         "steps": {
           "type": "array",
@@ -308,7 +313,6 @@
       },
       "required": [
         "name",
-        "description",
         "steps"
       ]
     },

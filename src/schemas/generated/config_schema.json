@@ -18,6 +18,10 @@
     },
     "project_type": {
       "$ref": "#/$defs/ProjectType"
+    },
+    "state_set_command": {
+      "type": "string",
+      "default": ""
     }
   },
   "required": [
@@ -101,10 +105,7 @@
         "connect",
         "verify_system",
         "prepare_system",
-        "before_all",
-        "before_test",
-        "after_test",
-        "after_all"
+        "finished"
       ]
     },
     "InstallSource": {

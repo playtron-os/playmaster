@@ -16,7 +16,7 @@ const updateScreenshots = bool.fromEnvironment('UPDATE_SCREENSHOTS');
 
 /// Custom extensions for WidgetTester and Finders used by generated tests.
 extension WidgetTesterExtensions on WidgetTester {
-  Future<void> initializeTest() async {
+  Future<void> initializeTest(String state) async {
     IntegrationTestWidgetsFlutterBinding.ensureInitialized().framePolicy =
         LiveTestWidgetsFlutterBindingFramePolicy.fullyLive;
     await setTestResolution();
@@ -235,6 +235,31 @@ flutter test integration_test --dart-define=UPDATE_SCREENSHOTS=true''',
     }
 
     throw Exception('Timed out waiting for $finder to disappear');
+  }
+
+  Future<Process> runCommandAsync(String command, String argument) async {
+    try {
+      final process = await Process.start(command, [
+        argument,
+      ], mode: ProcessStartMode.detachedWithStdio);
+
+      stdout.addStream(process.stdout);
+      stderr.addStream(process.stderr);
+
+      return process;
+    } catch (e) {
+      stderr.writeln('Failed to start $command: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> runCommandSync(String command, String argument) async {
+    try {
+      await Process.runSync(command, [argument]);
+    } catch (e) {
+      stderr.writeln('Failed to run $command: $e');
+      rethrow;
+    }
   }
 }
 

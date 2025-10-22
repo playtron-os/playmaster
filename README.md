@@ -101,10 +101,7 @@ Hooks execute at different lifecycle stages:
 - `connect` - Establish connections to remote hosts
 - `verify_system` - Verify system prerequisites
 - `prepare_system` - Prepare the system before tests
-- `before_all` - Run before all tests
-- `before_test` - Run before each individual test
-- `after_test` - Run after each individual test
-- `after_all` - Run after all tests complete
+- `finished` - Run after all tests complete
 
 ### Feature Test Definition
 

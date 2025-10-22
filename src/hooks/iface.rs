@@ -22,24 +22,16 @@ pub enum HookType {
     Connect,
     VerifySystem,
     PrepareSystem,
-    BeforeAll,
-    BeforeTest,
-    AfterTest,
-    AfterAll,
+    Finished,
 }
 
 impl HookType {
     pub fn pre_hooks() -> Vec<HookType> {
-        vec![
-            Self::Connect,
-            Self::VerifySystem,
-            Self::PrepareSystem,
-            Self::BeforeAll,
-        ]
+        vec![Self::Connect, Self::VerifySystem, Self::PrepareSystem]
     }
 
     pub fn post_hooks() -> Vec<HookType> {
-        vec![Self::AfterAll]
+        vec![Self::Finished]
     }
 }
 

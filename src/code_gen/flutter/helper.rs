@@ -39,7 +39,9 @@ const updateScreenshots = bool.fromEnvironment('UPDATE_SCREENSHOTS');
 
 /// Custom extensions for WidgetTester and Finders used by generated tests.
 extension WidgetTesterExtensions on WidgetTester {
-  Future<void> initializeTest() async {
+  Future<void> initializeTest(String state) async {
+    {state_set_command}
+
     IntegrationTestWidgetsFlutterBinding.ensureInitialized().framePolicy =
         LiveTestWidgetsFlutterBindingFramePolicy.fullyLive;
     await setTestResolution();
@@ -256,6 +258,31 @@ flutter test integration_test --dart-define=UPDATE_SCREENSHOTS=true''',
 
     throw Exception('Timed out waiting for $finder to disappear');
   }
+
+  Future<Process> runCommandAsync(String command, String argument) async {
+    try {
+      final process = await Process.start(command, [
+        argument,
+      ], mode: ProcessStartMode.detachedWithStdio);
+
+      stdout.addStream(process.stdout);
+      stderr.addStream(process.stderr);
+
+      return process;
+    } catch (e) {
+      stderr.writeln('Failed to start $command: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> runCommandSync(String command, String argument) async {
+    try {
+      await Process.runSync(command, [argument]);
+    } catch (e) {
+      stderr.writeln('Failed to run $command: $e');
+      rethrow;
+    }
+  }
 }
 
 extension FinderExtensions on CommonFinders {
@@ -280,11 +307,21 @@ extension FinderExtensions on CommonFinders {
 }
 "#;
 
+        let state_set_line = if self.config.state_set_command.is_empty() {
+            "".to_owned()
+        } else {
+            format!(
+                "await runCommandSync({}, state);",
+                self.config.state_set_command
+            )
+        };
+
         fs::write(
             &file,
             content
                 .replace("{project_name}", &project_name)
-                .replace("{app_main}", &app_main),
+                .replace("{app_main}", &app_main)
+                .replace("{state_set_command}", &state_set_line),
         )?;
         info!("Generated helpers.dart");
         Ok(())

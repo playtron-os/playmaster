@@ -126,7 +126,10 @@ beforeEach(WidgetTester tester) async {{
                 "    testWidgets('{}', (tester) async {{\n",
                 test.name
             ));
-            out.push_str("      await tester.initializeTest();");
+            out.push_str(&format!(
+                "      await tester.initializeTest('{}');",
+                ctx.vars.replace_var_usage(&test.state),
+            ));
             if has_before_each {
                 out.push_str("      await beforeEach(tester);\n");
             } else {

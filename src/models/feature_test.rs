@@ -25,7 +25,10 @@ pub struct FeatureTest {
 #[derive(Debug, Deserialize, JsonSchema, Clone)]
 pub struct TestCase {
     pub name: String,
+    #[serde(default)]
     pub description: String,
+    #[serde(default)]
+    pub state: String,
     pub steps: Vec<Step>,
 }
 

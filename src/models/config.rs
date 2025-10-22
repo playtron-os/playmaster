@@ -25,6 +25,8 @@ pub struct Config {
     #[serde(default)]
     pub dependencies: Vec<Dependency>,
     #[serde(default)]
+    pub state_set_command: String,
+    #[serde(default)]
     pub hooks: Vec<HookConfig>,
 }
 
