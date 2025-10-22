@@ -69,12 +69,6 @@ impl CodeRun {
     }
 
     pub fn execute(&self) -> EmptyResult {
-        let res = self._execute();
-        let _ = CommandUtils::terminate_all_cmds();
-        res
-    }
-
-    fn _execute(&self) -> EmptyResult {
         let features = FeatureTest::all_from_curr_dir()?;
 
         info!(
@@ -104,10 +98,18 @@ impl CodeRun {
             Err("Pre-hook failed".into())
         };
 
+        if let Err(err) = CommandUtils::terminate_all_cmds() {
+            error!("Failed to terminate running commands: {}", err);
+        }
+
         for hook_type in hooks::iface::HookType::post_hooks() {
             if let Err(err) = self.run_hooks_of_type(&ctx, hook_type) {
                 error!("Post-hook {:?} failed: {}", hook_type, err);
             }
+        }
+
+        if let Err(err) = CommandUtils::terminate_all_cmds() {
+            error!("Failed to terminate running commands: {}", err);
         }
 
         info!("Execution finished");
