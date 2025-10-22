@@ -1,6 +1,6 @@
 use std::sync::{Arc, RwLock};
 
-use tracing::info;
+use tracing::{error, info};
 
 use crate::{
     code_run,
@@ -15,7 +15,10 @@ use crate::{
         feature_test::FeatureTest,
         vars::Vars,
     },
-    utils::errors::{EmptyResult, OptionResultTrait},
+    utils::{
+        command::CommandUtils,
+        errors::{EmptyResult, OptionResultTrait},
+    },
 };
 
 /// Main controller to run the tests.
@@ -66,6 +69,12 @@ impl CodeRun {
     }
 
     pub fn execute(&self) -> EmptyResult {
+        let res = self._execute();
+        let _ = CommandUtils::terminate_all_cmds();
+        res
+    }
+
+    fn _execute(&self) -> EmptyResult {
         let features = FeatureTest::all_from_curr_dir()?;
 
         info!(
@@ -80,19 +89,30 @@ impl CodeRun {
             state: Arc::clone(&self.state),
         };
 
+        let mut has_error = false;
+
         for hook_type in hooks::iface::HookType::pre_hooks() {
-            self.run_hooks_of_type(&ctx, hook_type)?;
+            if let Err(err) = self.run_hooks_of_type(&ctx, hook_type) {
+                error!("Pre-hook {:?} failed: {}", hook_type, err);
+                has_error = true;
+            }
         }
 
-        self.run_tests(&ctx, features)?;
+        let res = if !has_error {
+            self.run_tests(&ctx, features)
+        } else {
+            Err("Pre-hook failed".into())
+        };
 
         for hook_type in hooks::iface::HookType::post_hooks() {
-            self.run_hooks_of_type(&ctx, hook_type)?;
+            if let Err(err) = self.run_hooks_of_type(&ctx, hook_type) {
+                error!("Post-hook {:?} failed: {}", hook_type, err);
+            }
         }
 
         info!("Execution finished");
 
-        Ok(())
+        res
     }
 
     fn run_tests(

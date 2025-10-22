@@ -60,15 +60,6 @@
     "HookConfig": {
       "type": "object",
       "properties": {
-        "args": {
-          "type": [
-            "array",
-            "null"
-          ],
-          "items": {
-            "type": "string"
-          }
-        },
         "async": {
           "type": "boolean"
         },

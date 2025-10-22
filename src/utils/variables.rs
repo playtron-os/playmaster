@@ -5,9 +5,11 @@ use crate::utils::string::StringUtils;
 
 lazy_static::lazy_static! {
     static ref VERSION_RE: Regex =
-        Regex::new(r"\{\{\s*([^}]+?)\s*\}\}").expect("Failed to compile regex");
+        Regex::new(r"\{\{\s*([^}]+?)\s*\}\}").expect("Failed to compile version regex");
 
-        static ref ENV_VAR_RE: Regex = Regex::new(r"\$\{([A-Za-z0-9_]+)\}|\$([A-Za-z_][A-Za-z0-9_]*)").expect("Failed to compile regex");
+    static ref ENV_VAR_RE: Regex =
+        Regex::new(r"\{\{\s*env\.([A-Za-z_][A-Za-z0-9_]*)\s*\}\}")
+            .expect("Failed to compile environment variable regex");
 }
 
 pub struct VariablesUtils {}

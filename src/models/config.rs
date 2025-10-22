@@ -88,6 +88,5 @@ pub struct HookConfig {
     #[serde(rename = "async")]
     pub is_async: bool,
     pub command: String,
-    pub args: Option<Vec<String>>,
     pub env: Option<HashMap<String, String>>,
 }

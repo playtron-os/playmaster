@@ -1,6 +1,7 @@
 use std::{
     fs,
     io::Write as _,
+    path::Path,
     process::{Command, Stdio},
 };
 
@@ -389,6 +390,12 @@ impl OsUtils {
             }
         }
 
+        Ok(())
+    }
+
+    pub fn set_file_permissions(file_path: &Path) -> EmptyResult {
+        use std::os::unix::fs::PermissionsExt;
+        fs::set_permissions(file_path, fs::Permissions::from_mode(0o755))?;
         Ok(())
     }
 }

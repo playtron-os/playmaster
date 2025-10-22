@@ -1,16 +1,79 @@
-use std::{io::Read as _, path::Path, process::Command, time::Duration};
+use std::{
+    io::Read as _,
+    path::Path,
+    process::{Child, Command},
+    sync::Mutex,
+    time::Duration,
+};
 
 use indicatif::{ProgressBar, ProgressStyle};
 use regex::Regex;
+use tracing::{error, info};
 
 use crate::{
     models::app_state::{CommandOutput, RemoteInfo},
-    utils::errors::{EmptyResult, ResultWithError},
+    utils::{
+        errors::{EmptyResult, ResultTrait, ResultWithError},
+        file_logger::FileLogger,
+    },
 };
+
+struct CmdInfo {
+    name: String,
+    child: Child,
+}
+
+lazy_static::lazy_static! {
+    static ref RUNNING_CMDS: Mutex<Vec<CmdInfo>> = Mutex::new(Vec::new());
+}
 
 pub struct CommandUtils {}
 
 impl CommandUtils {
+    pub fn track_cmd(name: &str, child: Child) -> EmptyResult {
+        let mut vec = RUNNING_CMDS
+            .lock()
+            .auto_err("Failed to lock RUNNING_CMDS")?;
+        vec.push(CmdInfo {
+            name: name.to_string(),
+            child,
+        });
+        Ok(())
+    }
+
+    pub fn terminate_all_cmds() -> EmptyResult {
+        let mut vec = RUNNING_CMDS
+            .lock()
+            .auto_err("Failed to lock RUNNING_CMDS")?;
+
+        for mut cmd in vec.drain(..) {
+            let _ = cmd.child.kill();
+            let output = cmd.child.wait_with_output();
+
+            match output {
+                Ok(output) => {
+                    info!(
+                        "Terminated command '{}' with status: {}",
+                        cmd.name, output.status
+                    );
+
+                    let stdout_file_logger =
+                        FileLogger::new(&format!("cmd_{}_stdout.log", cmd.name));
+                    let stderr_file_logger =
+                        FileLogger::new(&format!("cmd_{}_stderr.log", cmd.name));
+
+                    stdout_file_logger.log(&String::from_utf8_lossy(&output.stdout));
+                    stderr_file_logger.log(&String::from_utf8_lossy(&output.stderr));
+                }
+                Err(e) => {
+                    error!("Failed to wait for command '{}': {}", cmd.name, e);
+                }
+            }
+        }
+
+        Ok(())
+    }
+
     pub fn run_command_str(
         cmd: &str,
         remote: Option<&RemoteInfo>,

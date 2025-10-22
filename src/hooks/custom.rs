@@ -1,9 +1,12 @@
-use std::process::Command;
-use std::thread;
+use std::process::Stdio;
+use std::{env, thread};
+use std::{path::PathBuf, process::Command};
 
-use tracing::{error, info};
+use tracing::{error, info, trace};
 use uuid::Uuid;
 
+use crate::utils::errors::ResultWithError;
+use crate::utils::os::OsUtils;
 use crate::{
     hooks::iface::{Hook, HookContext, HookType},
     models::{
@@ -17,6 +20,11 @@ use crate::{
     },
 };
 
+struct RunCmd {
+    file_path: PathBuf,
+    command: String,
+}
+
 pub struct HookCustom {
     config: HookConfig,
 }
@@ -27,53 +35,56 @@ impl HookCustom {
     }
 
     /// Build command string with args and environment variables
-    fn build_cmd_string(&self) -> String {
+    fn build_cmd(&self) -> ResultWithError<RunCmd> {
         let mut s = String::new();
+        let mut has_display = false;
+        let file_path = OsUtils::write_temp_script(&self.config.command)
+            .auto_err("Failed to write temporary script")?;
 
         // Inject environment variables
         if let Some(envs) = &self.config.env {
             for (key, value) in envs {
                 s.push_str(&format!("{}='{}' ", key, value));
+
+                if key == "DISPLAY" {
+                    has_display = true;
+                }
             }
         }
 
-        // Determine if the command is multiline (YAML block or script)
-        let is_multiline = self.config.command.contains('\n');
-
-        // Build final command
-        if is_multiline {
-            // Escape single quotes safely for bash -c '...'
-            let escaped_script = self.config.command.replace('\'', "'\"'\"'");
-
-            s.push_str("bash -c '");
-            s.push_str(&escaped_script);
-            s.push('\'');
-        } else {
-            // Regular single-line command with optional args
-            s.push_str(&self.config.command);
-            if let Some(args) = &self.config.args {
-                s.push(' ');
-                s.push_str(&args.join(" "));
-            }
+        // Ensure DISPLAY is set
+        if !has_display {
+            s.push_str(
+                format!("DISPLAY='{}' ", env::var("DISPLAY").unwrap_or(":0".into())).as_str(),
+            );
         }
 
-        s
+        // Append command and args (works for multi-line YAML too)
+        s.push_str(&file_path.to_string_lossy());
+
+        Ok(RunCmd {
+            file_path,
+            command: s,
+        })
     }
 
     /// Local synchronous execution
     fn run_local_sync(&self) -> EmptyResult {
         // Build the full command string using your existing helper
-        let cmd_str = self.build_cmd_string();
+        let cmd = self.build_cmd()?;
 
         // Always run through bash so it can interpret the full string
-        let output = Command::new("bash")
-            .arg("-c")
-            .arg(&cmd_str)
-            .output()
-            .auto_err(&format!(
-                "Failed to start custom hook sync: {}",
-                self.config.name
-            ))?;
+        let mut command = Command::new("bash");
+        command.arg("-c").arg(&cmd.command);
+        trace!(
+            "[{}] Running sync command: {:?}",
+            self.config.name, &command
+        );
+
+        let output = command.output().auto_err(&format!(
+            "Failed to start custom hook sync: {}",
+            self.config.name
+        ))?;
 
         let stdout_logger = FileLogger::new(&format!("{}.stdout.log", self.config.name));
         let stderr_logger = FileLogger::new(&format!("{}.stderr.log", self.config.name));
@@ -92,6 +103,7 @@ impl HookCustom {
                 "[{}] Custom hook sync exited with non-zero status: {}",
                 self.config.name, output.status
             );
+            error!("[{}] Stdout: {}", self.config.name, stdout);
             error!("[{}] Stderr: {}", self.config.name, stderr);
             return Err(format!(
                 "Custom hook '{}' failed with exit code {:?}",
@@ -106,45 +118,37 @@ impl HookCustom {
 
     /// Local asynchronous execution
     fn run_local_async(&self) -> EmptyResult {
-        let cmd_str = self.build_cmd_string();
+        let cmd = self.build_cmd()?;
         let name = self.config.name.clone();
 
-        thread::spawn(move || {
-            let output = Command::new("bash").arg("-c").arg(&cmd_str).output();
+        let mut command = Command::new("bash");
+        command
+            .arg("-c")
+            .arg(&cmd.command)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped());
+        trace!("[{name}] Running async command: {:?}", &command);
 
-            let stdout_logger = FileLogger::new(&format!("{name}.stdout.log"));
-            let stderr_logger = FileLogger::new(&format!("{name}.stderr.log"));
-
-            match output {
-                Ok(output) => {
-                    if !output.status.success() {
-                        error!(
-                            "[{name}] Custom hook async exited with non-zero status: {}",
-                            output.status
-                        );
-                    }
-                    if !output.stdout.is_empty() {
-                        stdout_logger.log(&String::from_utf8_lossy(&output.stdout));
-                    }
-                    if !output.stderr.is_empty() {
-                        stderr_logger.log(&String::from_utf8_lossy(&output.stderr));
-                    }
-                }
-                Err(e) => {
-                    error!("[{name}] Failed to run async custom hook: {}", e);
-                }
+        match command.spawn() {
+            Ok(child) => CommandUtils::track_cmd(&name, child),
+            Err(e) => {
+                error!("[{name}] Failed to spawn async custom hook: {}", e);
+                Err(format!("Failed to spawn async custom hook '{}': {}", name, e).into())
             }
-        });
-
-        Ok(())
+        }
     }
 
     /// Remote synchronous execution with proper stdout/stderr logging
     fn run_remote_sync(&self, remote: &RemoteInfo) -> EmptyResult {
-        let cmd_str = self.build_cmd_string();
+        let cmd = self.build_cmd()?;
 
         // Execute remote command and capture stdout/stderr separately
-        let output = CommandUtils::run_command_str(&cmd_str, Some(remote))?;
+        CommandUtils::copy_file_to_remote(
+            remote,
+            &cmd.file_path.to_string_lossy(),
+            &cmd.file_path,
+        )?;
+        let output = CommandUtils::run_command_str(&cmd.command, Some(remote))?;
 
         // Log stdout/stderr to the same files as local execution
         let stdout_logger = FileLogger::new(&format!("{}.stdout.log", self.config.name));
@@ -169,17 +173,23 @@ impl HookCustom {
 
     /// Remote asynchronous execution with logging
     fn run_remote_async(&self, remote: &RemoteInfo) -> EmptyResult {
-        let cmd_str = self.build_cmd_string();
+        let cmd = self.build_cmd()?;
 
         // Generate temporary remote log files
         let stdout_remote = format!("/tmp/{}_stdout.log", Uuid::new_v4());
         let stderr_remote = format!("/tmp/{}_stderr.log", Uuid::new_v4());
         let pid_remote = format!("/tmp/{}_pid", Uuid::new_v4());
 
+        CommandUtils::copy_file_to_remote(
+            remote,
+            &cmd.file_path.to_string_lossy(),
+            &cmd.file_path,
+        )?;
+
         // Start the remote command and store its PID
         let async_cmd = format!(
             "nohup {} > {} 2> {} & echo $! > {}",
-            cmd_str, stdout_remote, stderr_remote, pid_remote
+            cmd.command, stdout_remote, stderr_remote, pid_remote
         );
         CommandUtils::run_command_str(&async_cmd, Some(remote))?;
 

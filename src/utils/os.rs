@@ -1,4 +1,11 @@
-use std::process::Command;
+use std::{
+    env, fs,
+    io::Write as _,
+    path::{Path, PathBuf},
+    process::Command,
+};
+
+use rand::{Rng as _, distr::Alphanumeric};
 
 use crate::{
     models::app_state::RemoteInfo,
@@ -71,5 +78,48 @@ impl OsUtils {
             return s.trim().to_string();
         }
         "x86_64".to_string()
+    }
+
+    pub fn set_file_permissions(file_path: &Path) -> EmptyResult {
+        #[cfg(target_os = "linux")]
+        {
+            crate::linux::utils::os::OsUtils::set_file_permissions(file_path)
+        }
+        #[cfg(not(target_os = "linux"))]
+        {
+            Ok(file_path.to_path_buf())
+        }
+    }
+
+    pub fn write_temp_script(contents: &str) -> ResultWithError<PathBuf> {
+        // Generate a random filename like "hook-ABC123.sh"
+        let random: String = rand::rng()
+            .sample_iter(&Alphanumeric)
+            .take(8)
+            .map(char::from)
+            .collect();
+        let filename = format!("{}.sh", random);
+
+        // Get system temp directory
+        let mut path = env::temp_dir();
+        path.push(filename);
+
+        // Write the contents
+        let mut file = fs::File::create(&path)?;
+
+        writeln!(
+            file,
+            "#!/usr/bin/env bash\n\
+             set -Eeuo pipefail\n\
+             # Uncomment for debug tracing\n\
+             # set -x\n"
+        )?;
+
+        file.write_all(contents.as_bytes())?;
+        file.flush()?;
+
+        Self::set_file_permissions(&path)?;
+
+        Ok(path)
     }
 }
