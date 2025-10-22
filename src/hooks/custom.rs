@@ -37,11 +37,24 @@ impl HookCustom {
             }
         }
 
-        // Add command and args
-        s.push_str(&self.config.command);
-        if let Some(args) = &self.config.args {
-            s.push(' ');
-            s.push_str(&args.join(" "));
+        // Determine if the command is multiline (YAML block or script)
+        let is_multiline = self.config.command.contains('\n');
+
+        // Build final command
+        if is_multiline {
+            // Escape single quotes safely for bash -c '...'
+            let escaped_script = self.config.command.replace('\'', "'\"'\"'");
+
+            s.push_str("bash -c '");
+            s.push_str(&escaped_script);
+            s.push('\'');
+        } else {
+            // Regular single-line command with optional args
+            s.push_str(&self.config.command);
+            if let Some(args) = &self.config.args {
+                s.push(' ');
+                s.push_str(&args.join(" "));
+            }
         }
 
         s
@@ -49,32 +62,43 @@ impl HookCustom {
 
     /// Local synchronous execution
     fn run_local_sync(&self) -> EmptyResult {
-        let mut cmd = Command::new(&self.config.command);
-        if let Some(args) = &self.config.args {
-            cmd.args(args);
-        }
-        if let Some(env) = &self.config.env {
-            cmd.envs(env);
-        }
+        // Build the full command string using your existing helper
+        let cmd_str = self.build_cmd_string();
 
-        let output = cmd
+        // Always run through bash so it can interpret the full string
+        let output = Command::new("bash")
+            .arg("-c")
+            .arg(&cmd_str)
             .output()
-            .auto_err(format!("Failed to start custom hook sync: {}", self.config.name).as_str())?;
+            .auto_err(&format!(
+                "Failed to start custom hook sync: {}",
+                self.config.name
+            ))?;
 
         let stdout_logger = FileLogger::new(&format!("{}.stdout.log", self.config.name));
         let stderr_logger = FileLogger::new(&format!("{}.stderr.log", self.config.name));
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
 
-        if !output.stdout.is_empty() {
-            stdout_logger.log(&String::from_utf8_lossy(&output.stdout));
+        if !stdout.is_empty() {
+            stdout_logger.log(&stdout);
         }
-        if !output.stderr.is_empty() {
-            stderr_logger.log(&String::from_utf8_lossy(&output.stderr));
+        if !stderr.is_empty() {
+            stderr_logger.log(&stderr);
         }
+
         if !output.status.success() {
             error!(
                 "[{}] Custom hook sync exited with non-zero status: {}",
                 self.config.name, output.status
             );
+            error!("[{}] Stderr: {}", self.config.name, stderr);
+            return Err(format!(
+                "Custom hook '{}' failed with exit code {:?}",
+                self.config.name,
+                output.status.code()
+            )
+            .into());
         }
 
         Ok(())
@@ -86,7 +110,7 @@ impl HookCustom {
         let name = self.config.name.clone();
 
         thread::spawn(move || {
-            let output = Command::new("sh").arg("-c").arg(&cmd_str).output();
+            let output = Command::new("bash").arg("-c").arg(&cmd_str).output();
 
             let stdout_logger = FileLogger::new(&format!("{name}.stdout.log"));
             let stderr_logger = FileLogger::new(&format!("{name}.stderr.log"));
