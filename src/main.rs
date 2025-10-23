@@ -5,7 +5,7 @@ use signal_hook::{
 };
 use std::sync::mpsc;
 use std::thread;
-use tracing::info;
+use tracing::{error, info};
 
 use crate::{
     code_gen::r#gen::CodeGen,
@@ -15,6 +15,7 @@ use crate::{
     utils::{
         command::CommandUtils,
         errors::{EmptyResult, ResultTrait},
+        execution::ExecutionUtils,
         logger::LoggerUtils,
     },
 };
@@ -107,7 +108,12 @@ fn main() -> EmptyResult {
         Ok("error") => println!("❌ Execution ended with error."),
         Ok("signal") => {
             println!("⚠️ Termination signal received.");
-            let _ = CommandUtils::terminate_all_cmds();
+            if let Err(err) = ExecutionUtils::set_running(false) {
+                error!("Failed to set running to false: {}", err);
+            }
+            if let Err(err) = CommandUtils::terminate_all_cmds() {
+                error!("Failed to terminate running commands: {}", err);
+            }
         }
         _ => println!("Unknown exit reason."),
     }

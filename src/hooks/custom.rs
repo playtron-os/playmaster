@@ -3,7 +3,6 @@ use std::{env, thread};
 use std::{path::PathBuf, process::Command};
 
 use tracing::{error, info, trace};
-use uuid::Uuid;
 
 use crate::utils::errors::ResultWithError;
 use crate::utils::os::OsUtils;
@@ -166,6 +165,11 @@ impl HookCustom {
                 "[{}] Remote custom hook exited with non-zero status: {}",
                 self.config.name, output.status
             );
+            return Err(format!(
+                "Remote custom hook '{}' failed with exit code {}",
+                self.config.name, output.status
+            )
+            .into());
         }
 
         Ok(())
@@ -175,69 +179,34 @@ impl HookCustom {
     fn run_remote_async(&self, remote: &RemoteInfo) -> EmptyResult {
         let cmd = self.build_cmd()?;
 
-        // Generate temporary remote log files
-        let stdout_remote = format!("/tmp/{}_stdout.log", Uuid::new_v4());
-        let stderr_remote = format!("/tmp/{}_stderr.log", Uuid::new_v4());
-        let pid_remote = format!("/tmp/{}_pid", Uuid::new_v4());
-
         CommandUtils::copy_file_to_remote(
             remote,
             &cmd.file_path.to_string_lossy(),
             &cmd.file_path,
         )?;
 
-        // Start the remote command and store its PID
-        let async_cmd = format!(
-            "nohup {} > {} 2> {} & echo $! > {}",
-            cmd.command, stdout_remote, stderr_remote, pid_remote
-        );
-        CommandUtils::run_command_str(&async_cmd, Some(remote))?;
-
+        // Start the remote command
         let name = self.config.name.clone();
         let remote_clone = remote.clone();
-        let stdout_remote_clone = stdout_remote.clone();
-        let stderr_remote_clone = stderr_remote.clone();
-        let pid_remote_clone = pid_remote.clone();
 
         thread::spawn(move || {
-            let stdout_logger = FileLogger::new(&format!("{name}.stdout.log"));
-            let stderr_logger = FileLogger::new(&format!("{name}.stderr.log"));
-
-            loop {
-                // Fetch logs
-                let stdout = CommandUtils::fetch_remote_file(&remote_clone, &stdout_remote_clone)
-                    .unwrap_or_default();
-                let stderr = CommandUtils::fetch_remote_file(&remote_clone, &stderr_remote_clone)
-                    .unwrap_or_default();
-
-                if !stdout.is_empty() {
-                    stdout_logger.log(&stdout);
-                }
-                if !stderr.is_empty() {
-                    stderr_logger.log(&stderr);
-                }
-
-                // Check if remote process is still running
-                let pid_str = CommandUtils::fetch_remote_file(&remote_clone, &pid_remote_clone)
-                    .unwrap_or_default();
-                let pid = pid_str.trim();
-                if pid.is_empty() {
-                    // PID not available yet, continue polling
-                    std::thread::sleep(std::time::Duration::from_secs(2));
-                    continue;
-                }
-
-                // Check process with kill -0
-                let check_cmd =
-                    format!("kill -0 {} 2>/dev/null && echo running || echo exited", pid);
-                let res = CommandUtils::run_command_str(&check_cmd, Some(&remote_clone))
-                    .unwrap_or_default();
-                if res.stdout.trim() == "exited" {
-                    break; // remote process finished, exit loop
-                }
-
-                std::thread::sleep(std::time::Duration::from_secs(2));
+            if let Err(err) = CommandUtils::track_remote_cmd(
+                cmd.command
+                    .split_whitespace()
+                    .last()
+                    .unwrap_or_default()
+                    .to_owned(),
+                remote_clone.clone(),
+            ) {
+                error!("[{name}] Failed to track remote async command: {}", err);
             }
+
+            if let Err(err) = CommandUtils::run_command_str(&cmd.command, Some(&remote_clone)) {
+                error!("[{name}] Failed to start remote async command: {}", err);
+                return;
+            }
+
+            info!("[{name}] Remote async command ended.");
         });
 
         Ok(())

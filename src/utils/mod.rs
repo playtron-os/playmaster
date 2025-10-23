@@ -2,6 +2,7 @@ pub mod command;
 pub mod dir;
 pub mod downloader_def;
 pub mod errors;
+pub mod execution;
 pub mod file_logger;
 pub mod flutter;
 pub mod logger;

@@ -18,6 +18,7 @@ use crate::{
     utils::{
         command::CommandUtils,
         errors::{EmptyResult, OptionResultTrait},
+        execution::ExecutionUtils,
     },
 };
 
@@ -89,10 +90,14 @@ impl CodeRun {
             if let Err(err) = self.run_hooks_of_type(&ctx, hook_type) {
                 error!("Pre-hook {:?} failed: {}", hook_type, err);
                 has_error = true;
+
+                if !ExecutionUtils::is_running() {
+                    break;
+                }
             }
         }
 
-        let res = if !has_error {
+        let res = if !has_error && ExecutionUtils::is_running() {
             self.run_tests(&ctx, features)
         } else {
             Err("Pre-hook failed".into())

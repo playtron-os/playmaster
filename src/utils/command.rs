@@ -23,8 +23,14 @@ struct CmdInfo {
     child: Child,
 }
 
+struct RemoteCmdInfo {
+    command: String,
+    remote: RemoteInfo,
+}
+
 lazy_static::lazy_static! {
     static ref RUNNING_CMDS: Mutex<Vec<CmdInfo>> = Mutex::new(Vec::new());
+    static ref RUNNING_REMOTE_CMDS: Mutex<Vec<RemoteCmdInfo>> = Mutex::new(Vec::new());
 }
 
 pub struct CommandUtils {}
@@ -41,7 +47,21 @@ impl CommandUtils {
         Ok(())
     }
 
+    pub fn track_remote_cmd(command: String, remote: RemoteInfo) -> EmptyResult {
+        let mut vec = RUNNING_REMOTE_CMDS
+            .lock()
+            .auto_err("Failed to lock RUNNING_REMOTE_CMDS")?;
+        vec.push(RemoteCmdInfo { command, remote });
+        Ok(())
+    }
+
     pub fn terminate_all_cmds() -> EmptyResult {
+        Self::terminate_local_cmds()?;
+        Self::terminate_remote_cmds()?;
+        Ok(())
+    }
+
+    fn terminate_local_cmds() -> EmptyResult {
         let mut vec = RUNNING_CMDS
             .lock()
             .auto_err("Failed to lock RUNNING_CMDS")?;
@@ -69,6 +89,22 @@ impl CommandUtils {
                     error!("Failed to wait for command '{}': {}", cmd.name, e);
                 }
             }
+        }
+
+        Ok(())
+    }
+
+    fn terminate_remote_cmds() -> EmptyResult {
+        let mut vec = RUNNING_REMOTE_CMDS
+            .lock()
+            .auto_err("Failed to lock RUNNING_REMOTE_CMDS")?;
+
+        for command in vec.drain(..) {
+            info!("Terminating remote command: {}", command.command);
+            Self::run_command_str(
+                &format!("pkill -f \"{}\"", command.command),
+                Some(&command.remote),
+            )?;
         }
 
         Ok(())
@@ -121,6 +157,16 @@ impl CommandUtils {
         std::io::copy(&mut local_file, &mut remote_file)
             .map_err(|e| format!("Failed to copy to remote file '{:?}': {}", remote_path, e))?;
 
+        if let Err(err) = Self::run_command_str(
+            &format!("chmod +x {}", remote_path.to_string_lossy()),
+            Some(remote),
+        ) {
+            error!(
+                "Failed to set execute permissions on remote file '{:?}': {}",
+                remote_path, err
+            );
+        }
+
         Ok(())
     }
 
@@ -163,6 +209,7 @@ impl CommandUtils {
     }
 
     /// Fetches the contents of a file from a remote host over SSH
+    #[allow(dead_code)]
     pub fn fetch_remote_file(remote: &RemoteInfo, remote_path: &str) -> ResultWithError<String> {
         let sess = remote.get_sess()?;
 
