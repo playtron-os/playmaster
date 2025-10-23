@@ -19,9 +19,8 @@
     "project_type": {
       "$ref": "#/$defs/ProjectType"
     },
-    "state_set_command": {
-      "type": "string",
-      "default": ""
+    "state_set": {
+      "$ref": "#/$defs/StateSet"
     }
   },
   "required": [
@@ -187,6 +186,24 @@
       "type": "string",
       "enum": [
         "flutter"
+      ]
+    },
+    "StateSet": {
+      "type": "object",
+      "properties": {
+        "arguments": {
+          "type": "array",
+          "default": [],
+          "items": {
+            "type": "string"
+          }
+        },
+        "command": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "command"
       ]
     }
   }

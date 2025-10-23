@@ -253,9 +253,9 @@ flutter test integration_test --dart-define=UPDATE_SCREENSHOTS=true''',
     }
   }
 
-  Future<void> runCommandSync(String command, String argument) async {
+  void runCommandSync(String command, List<String> arguments) {
     try {
-      await Process.runSync(command, [argument]);
+      Process.run(command, arguments);
     } catch (e) {
       stderr.writeln('Failed to run $command: $e');
       rethrow;

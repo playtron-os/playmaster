@@ -25,7 +25,7 @@ pub struct Config {
     #[serde(default)]
     pub dependencies: Vec<Dependency>,
     #[serde(default)]
-    pub state_set_command: String,
+    pub state_set: StateSet,
     #[serde(default)]
     pub hooks: Vec<HookConfig>,
 }
@@ -46,6 +46,13 @@ impl Config {
             self.add_flutter_defaults();
         }
     }
+}
+
+#[derive(Debug, Deserialize, Clone, JsonSchema, Default)]
+pub struct StateSet {
+    pub command: String,
+    #[serde(default)]
+    pub arguments: Vec<String>,
 }
 
 #[derive(Debug, Deserialize, Clone, JsonSchema)]

@@ -7,7 +7,7 @@ use crate::utils::errors::{EmptyResult, ResultTrait};
 pub struct ExecutionUtils {}
 
 lazy_static::lazy_static! {
-    static ref IS_RUNNING: Mutex<bool> = Mutex::new(false);
+    static ref IS_RUNNING: Mutex<bool> = Mutex::new(true);
 }
 
 impl ExecutionUtils {

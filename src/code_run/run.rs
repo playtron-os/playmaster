@@ -88,7 +88,7 @@ impl CodeRun {
 
         for hook_type in hooks::iface::HookType::pre_hooks() {
             if let Err(err) = self.run_hooks_of_type(&ctx, hook_type) {
-                error!("Pre-hook {:?} failed: {}", hook_type, err);
+                error!("Pre-hook error {:?} failed: {}", hook_type, err);
                 has_error = true;
 
                 if !ExecutionUtils::is_running() {

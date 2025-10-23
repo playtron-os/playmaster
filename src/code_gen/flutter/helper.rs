@@ -275,9 +275,9 @@ flutter test integration_test --dart-define=UPDATE_SCREENSHOTS=true''',
     }
   }
 
-  Future<void> runCommandSync(String command, String argument) async {
+  void runCommandSync(String command, List<String> arguments) {
     try {
-      await Process.runSync(command, [argument]);
+      Process.run(command, arguments);
     } catch (e) {
       stderr.writeln('Failed to run $command: $e');
       rethrow;
@@ -307,12 +307,18 @@ extension FinderExtensions on CommonFinders {
 }
 "#;
 
-        let state_set_line = if self.config.state_set_command.is_empty() {
+        let state_set_line = if self.config.state_set.command.is_empty() {
             "".to_owned()
         } else {
+            let arguments = if self.config.state_set.arguments.is_empty() {
+                "".to_owned()
+            } else {
+                format!("'{}'", self.config.state_set.arguments.join("', '"))
+            };
+
             format!(
-                "await runCommandSync({}, state);",
-                self.config.state_set_command
+                "runCommandSync('{}', [{}, state]);",
+                self.config.state_set.command, arguments
             )
         };
 
