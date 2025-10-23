@@ -46,6 +46,10 @@ extension WidgetTesterExtensions on WidgetTester {
         LiveTestWidgetsFlutterBindingFramePolicy.fullyLive;
     await setTestResolution();
     {app_main}
+
+    // Allow time for app to settle
+    await pumpAndSettle();
+    await pumpAndSettle();
     await pumpAndSettle();
   }
 
