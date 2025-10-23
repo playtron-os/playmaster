@@ -31,3 +31,29 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: make sem-release
+
+      # In ".releaserc.yaml" a step is defined to write the release version to
+      # ".version.txt" upon successful release. This step checks to see if that
+      # exists to determine if the other jobs need to run.
+      - id: status
+        name: Set release status
+        shell: bash
+        run: |
+          if [ -f .version.txt ]; then
+            echo "was_released=yes" >> "$GITHUB_OUTPUT"
+          else
+            echo "was_released=no" >> "$GITHUB_OUTPUT"
+          fi
+
+    outputs:
+      should_publish: ${{ steps.status.outputs.was_released }}
+
+  publish-to-copr:
+    name: 🟤 Publish to COPR
+    needs: release
+    if: needs.release.outputs.should_publish == 'yes'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Trigger COPR Build
+        run: curl -X POST ${{ secrets.COPR_WEBHOOK_URL }}

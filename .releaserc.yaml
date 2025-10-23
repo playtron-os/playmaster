@@ -36,6 +36,7 @@ plugins:
       prepareCmd: |
         make in-docker TARGET='dist'
         make in-docker TARGET='dist' ARCH="aarch64"
+      publishCmd: "echo '${nextRelease.version}' > .version.txt"
 
   # Commit the following changes to git after other plugins have run
   - - "@semantic-release/git"
