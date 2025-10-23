@@ -1,6 +1,6 @@
 [package]
 name = "playmaster"
-version = "0.1.0"
+version = "1.0.0"
 edition = "2024"
 license = "MIT"
 description = "CLI tool to facilitate generation of test code from YAML feature files and running them either locally or remotely"
@@ -39,6 +39,6 @@ rand = "0.9.2"
 signal-hook = "0.3.18"
 
 [dev-dependencies.cargo-husky]
-version = "1"
+version = "1.0.0"
 default-features = false # Disable features which are enabled by default
 features = ["precommit-hook", "run-cargo-fmt", "run-cargo-clippy"]
