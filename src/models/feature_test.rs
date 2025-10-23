@@ -87,18 +87,29 @@ pub enum ProgressWidgetType {
 pub enum WaitFor {
     Key {
         key: String,
+        #[serde(default)]
         timeout_millis: Option<u32>,
+        #[serde(default)]
+        settle: bool,
     },
     Text {
         text: String,
+        #[serde(default)]
         timeout_millis: Option<u32>,
+        #[serde(default)]
+        settle: bool,
     },
     Delay {
         delay: u64,
+        #[serde(default)]
+        settle: bool,
     },
     Progress {
         progress: ProgressWidgetType,
+        #[serde(default)]
         timeout_millis: Option<u32>,
+        #[serde(default)]
+        settle: bool,
     },
 }
 

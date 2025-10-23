@@ -185,34 +185,42 @@ impl Step {
                 WaitFor::Key {
                     key,
                     timeout_millis,
+                    settle,
                 } => format!(
-                    "      await tester.pumpUntilFound(find.byKey(Key('{}')), timeout: {});\n",
+                    "      await tester.pumpUntilFound(find.byKey(Key('{}')), timeout: {});\n{}",
                     ctx.vars.replace_var_usage(key),
-                    Self::duration(*timeout_millis, 5000)
+                    Self::duration(*timeout_millis, 5000),
+                    Self::settle(*settle),
                 ),
                 WaitFor::Text {
                     text,
                     timeout_millis,
+                    settle,
                 } => format!(
-                    "      await tester.pumpUntilFound(find.text('{}'), timeout: {});\n",
+                    "      await tester.pumpUntilFound(find.text('{}'), timeout: {});\n{}",
                     ctx.vars.replace_var_usage(text),
-                    Self::duration(*timeout_millis, 5000)
+                    Self::duration(*timeout_millis, 5000),
+                    Self::settle(*settle),
                 ),
-                WaitFor::Delay { delay } => format!(
-                    "      await tester.pump(Duration(milliseconds: {}));\n",
-                    delay
+                WaitFor::Delay { delay, settle } => format!(
+                    "      await tester.pump(Duration(milliseconds: {}));\n{}",
+                    delay,
+                    Self::settle(*settle),
                 ),
                 WaitFor::Progress {
                     progress,
                     timeout_millis,
+                    settle,
                 } => match progress {
                     feature_test::ProgressWidgetType::Linear => format!(
-                        "      await tester.pumpUntilProgressCompleted(find.byType(LinearProgressIndicator), timeout: {});\n",
-                        Self::duration(*timeout_millis, 30000)
+                        "      await tester.pumpUntilProgressCompleted(find.byType(LinearProgressIndicator), timeout: {});\n{}",
+                        Self::duration(*timeout_millis, 30000),
+                        Self::settle(*settle),
                     ),
                     feature_test::ProgressWidgetType::Radial => format!(
-                        "      await tester.pumpUntilProgressCompleted(find.byType(CircularProgressIndicator), timeout: {});\n",
-                        Self::duration(*timeout_millis, 30000)
+                        "      await tester.pumpUntilProgressCompleted(find.byType(CircularProgressIndicator), timeout: {});\n{}",
+                        Self::duration(*timeout_millis, 30000),
+                        Self::settle(*settle),
                     ),
                 },
             },
@@ -274,5 +282,13 @@ impl Step {
 
     fn duration(duration: Option<u32>, default_ms: u32) -> String {
         format!("Duration(milliseconds: {})", duration.unwrap_or(default_ms))
+    }
+
+    fn settle(settle: bool) -> String {
+        if settle {
+            "      await tester.pumpAndSettle();\n".to_owned()
+        } else {
+            "".to_owned()
+        }
     }
 }
