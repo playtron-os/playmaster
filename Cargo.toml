@@ -2,6 +2,13 @@
 name = "playmaster"
 version = "0.1.0"
 edition = "2024"
+license = "MIT"
+description = "CLI tool to facilitate generation of test code from YAML feature files and running them either locally or remotely"
+
+[package.metadata.generate-rpm]
+assets = [
+  { source = "target/release/playmaster", dest = "/usr/bin/playmaster", mode = "755" }
+]
 
 [dependencies]
 clap = { version = "4.5", features = ["derive"] }

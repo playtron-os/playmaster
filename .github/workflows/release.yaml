@@ -1,0 +1,33 @@
+# Build and publish a release of Playmaster using semantic-release whenever
+# changes are merged into master.
+name: "🎉 Release"
+
+on:
+  workflow_run:
+    workflows: ["Integration Tests"]
+    types:
+      - completed
+    branches:
+      - master
+
+jobs:
+  release:
+    name: Publish
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v1
+        with:
+          node-version: "20"
+
+      - name: Install Dependencies
+        run: npm install @semantic-release/exec @google/semantic-release-replace-plugin @semantic-release/git
+
+      - name: Release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: make sem-release
