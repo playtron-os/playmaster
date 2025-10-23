@@ -339,12 +339,17 @@
             "key": {
               "type": "string"
             },
+            "settle": {
+              "type": "boolean",
+              "default": false
+            },
             "timeout_millis": {
               "type": [
                 "integer",
                 "null"
               ],
               "format": "uint32",
+              "default": null,
               "minimum": 0
             }
           },
@@ -355,6 +360,10 @@
         {
           "type": "object",
           "properties": {
+            "settle": {
+              "type": "boolean",
+              "default": false
+            },
             "text": {
               "type": "string"
             },
@@ -364,6 +373,7 @@
                 "null"
               ],
               "format": "uint32",
+              "default": null,
               "minimum": 0
             }
           },
@@ -378,6 +388,10 @@
               "type": "integer",
               "format": "uint64",
               "minimum": 0
+            },
+            "settle": {
+              "type": "boolean",
+              "default": false
             }
           },
           "required": [
@@ -390,12 +404,17 @@
             "progress": {
               "$ref": "#/$defs/ProgressWidgetType"
             },
+            "settle": {
+              "type": "boolean",
+              "default": false
+            },
             "timeout_millis": {
               "type": [
                 "integer",
                 "null"
               ],
               "format": "uint32",
+              "default": null,
               "minimum": 0
             }
           },
