@@ -29,6 +29,7 @@ scopeguard = "1.2.0"
 terminal_size = "0.4.3"
 tempfile = "3.23.0"
 rand = "0.9.2"
+signal-hook = "0.3.18"
 
 [dev-dependencies.cargo-husky]
 version = "1"

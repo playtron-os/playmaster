@@ -65,11 +65,14 @@ impl RunFlutter {
 
     fn prepare_env(&self, remote: Option<&RemoteInfo>, exec_dir: &Path) -> EmptyResult {
         self.build()?;
-        self.sync_build(remote, exec_dir)?;
-        self.sync_tests(remote, exec_dir)?;
-        self.sync_driver(remote, exec_dir)?;
-        self.sync_linux(remote, exec_dir)?;
-        self.sync_pubspec(remote, exec_dir)?;
+
+        if let Some(remote) = remote {
+            self.sync_build(remote, exec_dir)?;
+            self.sync_tests(remote, exec_dir)?;
+            self.sync_driver(remote, exec_dir)?;
+            self.sync_linux(remote, exec_dir)?;
+            self.sync_pubspec(remote, exec_dir)?;
+        }
 
         Ok(())
     }
@@ -77,11 +80,11 @@ impl RunFlutter {
     fn build(&self) -> EmptyResult {
         info!("Building Flutter app...");
 
-        let mut command = Command::new("sh");
+        let mut command = Command::new("bash");
         command
             .current_dir(utils::dir::DirUtils::curr_dir()?)
             .arg("-c")
-            .arg("flutter build linux --debug --target=integration_test/generated/all_tests.dart")
+            .arg("flutter pub get && flutter build linux --debug --target=integration_test/generated/all_tests.dart")
             .stdout(Stdio::inherit())
             .stderr(Stdio::inherit());
         let status = command.status()?;
@@ -93,7 +96,9 @@ impl RunFlutter {
         Ok(())
     }
 
-    fn sync_build(&self, remote: Option<&RemoteInfo>, exec_dir: &Path) -> EmptyResult {
+    fn sync_build(&self, remote: &RemoteInfo, exec_dir: &Path) -> EmptyResult {
+        info!("Syncing build to remote...");
+
         let local_flutter_dir = utils::dir::DirUtils::curr_dir()?
             .join("build")
             .join("linux")
@@ -107,66 +112,56 @@ impl RunFlutter {
             .join("debug")
             .join("bundle");
 
-        if let Some(remote) = remote {
-            info!("Syncing build to remote...");
-
-            utils::command::CommandUtils::sync_dir_to_remote(
-                remote,
-                local_flutter_dir.to_string_lossy().as_ref(),
-                remote_flutter_dir.to_string_lossy().as_ref(),
-            )?;
-        }
+        utils::command::CommandUtils::sync_dir_to_remote(
+            remote,
+            local_flutter_dir.to_string_lossy().as_ref(),
+            remote_flutter_dir.to_string_lossy().as_ref(),
+        )?;
 
         Ok(())
     }
 
-    fn sync_tests(&self, remote: Option<&RemoteInfo>, exec_dir: &Path) -> EmptyResult {
+    fn sync_tests(&self, remote: &RemoteInfo, exec_dir: &Path) -> EmptyResult {
+        info!("Syncing integration tests to remote...");
+
         let local_flutter_dir = utils::dir::DirUtils::curr_dir()?.join("integration_test");
         let remote_flutter_dir = exec_dir.join("integration_test");
 
-        if let Some(remote) = remote {
-            info!("Syncing integration tests to remote...");
-
-            utils::command::CommandUtils::sync_dir_to_remote(
-                remote,
-                local_flutter_dir.to_string_lossy().as_ref(),
-                remote_flutter_dir.to_string_lossy().as_ref(),
-            )?;
-        }
+        utils::command::CommandUtils::sync_dir_to_remote(
+            remote,
+            local_flutter_dir.to_string_lossy().as_ref(),
+            remote_flutter_dir.to_string_lossy().as_ref(),
+        )?;
 
         Ok(())
     }
 
-    fn sync_driver(&self, remote: Option<&RemoteInfo>, exec_dir: &Path) -> EmptyResult {
+    fn sync_driver(&self, remote: &RemoteInfo, exec_dir: &Path) -> EmptyResult {
+        info!("Syncing test_driver to remote...");
+
         let local_flutter_dir = utils::dir::DirUtils::curr_dir()?.join("test_driver");
         let remote_flutter_dir = exec_dir.join("test_driver");
 
-        if let Some(remote) = remote {
-            info!("Syncing test_driver to remote...");
-
-            utils::command::CommandUtils::sync_dir_to_remote(
-                remote,
-                local_flutter_dir.to_string_lossy().as_ref(),
-                remote_flutter_dir.to_string_lossy().as_ref(),
-            )?;
-        }
+        utils::command::CommandUtils::sync_dir_to_remote(
+            remote,
+            local_flutter_dir.to_string_lossy().as_ref(),
+            remote_flutter_dir.to_string_lossy().as_ref(),
+        )?;
 
         Ok(())
     }
 
-    fn sync_linux(&self, remote: Option<&RemoteInfo>, exec_dir: &Path) -> EmptyResult {
+    fn sync_linux(&self, remote: &RemoteInfo, exec_dir: &Path) -> EmptyResult {
+        info!("Syncing linux to remote...");
+
         let local_flutter_dir = utils::dir::DirUtils::curr_dir()?.join("linux");
         let remote_flutter_dir = exec_dir.join("linux");
 
-        if let Some(remote) = remote {
-            info!("Syncing linux to remote...");
-
-            utils::command::CommandUtils::sync_dir_to_remote(
-                remote,
-                local_flutter_dir.to_string_lossy().as_ref(),
-                remote_flutter_dir.to_string_lossy().as_ref(),
-            )?;
-        }
+        utils::command::CommandUtils::sync_dir_to_remote(
+            remote,
+            local_flutter_dir.to_string_lossy().as_ref(),
+            remote_flutter_dir.to_string_lossy().as_ref(),
+        )?;
 
         Ok(())
     }
@@ -207,7 +202,9 @@ impl RunFlutter {
         Ok(out)
     }
 
-    fn sync_pubspec(&self, remote: Option<&RemoteInfo>, exec_dir: &Path) -> EmptyResult {
+    fn sync_pubspec(&self, remote: &RemoteInfo, exec_dir: &Path) -> EmptyResult {
+        info!("Syncing cleaned pubspec.yaml to remote…");
+
         let local_pubspec_file = utils::dir::DirUtils::curr_dir()?.join("pubspec.yaml");
         let remote_pubspec_file = exec_dir.join("pubspec.yaml");
 
@@ -222,16 +219,11 @@ impl RunFlutter {
         fs::write(temp.path(), &cleaned)?;
 
         // Send to remote (or write locally as fallback)
-        if let Some(remote) = remote {
-            info!("Syncing cleaned pubspec.yaml to remote…");
-            utils::command::CommandUtils::copy_file_to_remote(
-                remote,
-                temp.path().to_string_lossy().as_ref(),
-                &remote_pubspec_file,
-            )?;
-        } else {
-            fs::write(&remote_pubspec_file, cleaned)?;
-        }
+        utils::command::CommandUtils::copy_file_to_remote(
+            remote,
+            temp.path().to_string_lossy().as_ref(),
+            &remote_pubspec_file,
+        )?;
 
         Ok(())
     }
