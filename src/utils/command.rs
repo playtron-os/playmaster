@@ -125,8 +125,8 @@ impl CommandUtils {
             let output = std::process::Command::new("bash")
                 .arg("-c")
                 .arg(cmd)
-                .stdout(std::process::Stdio::inherit())
-                .stderr(std::process::Stdio::inherit())
+                .stdout(std::process::Stdio::piped())
+                .stderr(std::process::Stdio::piped())
                 .output()?;
             Ok(CommandOutput {
                 stdout: String::from_utf8_lossy(&output.stdout).to_string(),
