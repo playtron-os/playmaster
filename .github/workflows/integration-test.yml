@@ -14,6 +14,7 @@ env:
 
 jobs:
   test-flutter-app:
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
     name: Test Flutter Sample App
     runs-on: ubuntu-latest
     steps:
