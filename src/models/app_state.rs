@@ -10,7 +10,7 @@ use terminal_size::{Height, Width, terminal_size};
 
 use crate::utils::errors::ResultWithError;
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct CommandOutput {
     pub stdout: String,
     pub stderr: String,
@@ -54,9 +54,9 @@ impl RemoteInfo {
         let mut channel = sess.channel_session()?;
         channel.request_pty("xterm", None, None)?;
 
-        // Run the command safely through sh -c
-        let shell_cmd = format!("sh -c '{}'", cmd.replace("'", "'\\''"));
-        channel.exec(&shell_cmd)?;
+        // Run the command safely through bash -c
+        let bash_cmd = format!("bash -c '{}'", cmd.replace("'", "'\\''"));
+        channel.exec(&bash_cmd)?;
 
         // Set non-blocking mode so we can read both stdout and stderr without deadlocking (including carriage returns)
         sess.set_blocking(false);

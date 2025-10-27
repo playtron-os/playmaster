@@ -74,7 +74,9 @@ impl HookCustom {
 
         // Always run through bash so it can interpret the full string
         let mut command = Command::new("bash");
-        command.arg("-c").arg(&cmd.command);
+        command
+            .arg("-c")
+            .arg(&CommandUtils::with_env_source(None, &cmd.command)?);
         trace!(
             "[{}] Running sync command: {:?}",
             self.config.name, &command
@@ -123,7 +125,7 @@ impl HookCustom {
         let mut command = Command::new("bash");
         command
             .arg("-c")
-            .arg(&cmd.command)
+            .arg(&CommandUtils::with_env_source(None, &cmd.command)?)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
         trace!("[{name}] Running async command: {:?}", &command);

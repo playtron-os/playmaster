@@ -60,10 +60,15 @@
       "type": "object",
       "properties": {
         "async": {
-          "type": "boolean"
+          "type": "boolean",
+          "default": false
         },
         "command": {
           "type": "string"
+        },
+        "continue_on_error": {
+          "type": "boolean",
+          "default": false
         },
         "env": {
           "type": [
@@ -72,7 +77,8 @@
           ],
           "additionalProperties": {
             "type": "string"
-          }
+          },
+          "default": null
         },
         "hook_type": {
           "$ref": "#/$defs/HookType"
@@ -84,7 +90,6 @@
       "required": [
         "name",
         "hook_type",
-        "async",
         "command"
       ]
     },

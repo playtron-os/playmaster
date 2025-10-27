@@ -13,6 +13,7 @@ use tracing::{error, info};
 use crate::{
     models::app_state::{CommandOutput, RemoteInfo},
     utils::{
+        dir::DirUtils,
         errors::{EmptyResult, ResultTrait, ResultWithError},
         file_logger::FileLogger,
     },
@@ -114,8 +115,10 @@ impl CommandUtils {
         cmd: &str,
         remote: Option<&RemoteInfo>,
     ) -> ResultWithError<CommandOutput> {
+        let cmd = CommandUtils::with_env_source(remote, cmd)?;
+
         if let Some(remote) = remote {
-            let res = remote.exec(cmd)?;
+            let res = remote.exec(&cmd)?;
             Ok(res)
         } else {
             let output = std::process::Command::new("sh")
@@ -270,5 +273,14 @@ impl CommandUtils {
             String::from_utf8_lossy(&[b]).into_owned()
         })
         .into_owned()
+    }
+
+    pub fn with_env_source(remote: Option<&RemoteInfo>, str: &str) -> ResultWithError<String> {
+        let root_dir = DirUtils::root_dir(remote)?;
+        Ok(format!(
+            "(source {}/.bashrc > /dev/null 2>&1 || true) && {}",
+            root_dir.to_string_lossy(),
+            str
+        ))
     }
 }

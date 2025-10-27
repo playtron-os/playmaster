@@ -245,7 +245,7 @@ impl RunFlutter {
             "cd {} && DISPLAY={} {}",
             exec_dir.display(),
             self.get_display(),
-            self.get_flutter_drive_command_str()?,
+            self.get_flutter_drive_command_str(Some(remote))?,
         );
         info!("Remote command: {}\n", cmd);
 
@@ -261,7 +261,7 @@ impl RunFlutter {
         let mut command = Command::new("sh");
         command
             .current_dir(exec_dir)
-            .args(["-c", &self.get_flutter_drive_command_str()?])
+            .args(["-c", &self.get_flutter_drive_command_str(None)?])
             .env("DISPLAY", self.get_display())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
@@ -269,7 +269,10 @@ impl RunFlutter {
         Ok(command.spawn()?)
     }
 
-    fn get_flutter_drive_command_str(&self) -> ResultWithError<String> {
+    fn get_flutter_drive_command_str(
+        &self,
+        remote: Option<&RemoteInfo>,
+    ) -> ResultWithError<String> {
         let binary_name = FlutterUtils::get_name()?;
 
         let binary = format!("build/linux/x64/debug/bundle/{binary_name}");
@@ -278,7 +281,7 @@ impl RunFlutter {
             "--driver=test_driver/integration_test.dart --target=integration_test/generated/all_tests.dart {binary_arg} --no-headless -d linux"
         );
 
-        Ok(format!("flutter drive {args}"))
+        CommandUtils::with_env_source(remote, &format!("flutter drive {args}"))
     }
 
     fn process_output(&self, mut child: Child, features: &[FeatureTest]) -> EmptyResult {

@@ -11,6 +11,7 @@ use crate::{
     models::app_state::RemoteInfo,
     utils::{
         command::CommandUtils,
+        dir::DirUtils,
         errors::{EmptyResult, OptionResultTrait, ResultTrait as _, ResultWithError},
     },
 };
@@ -54,36 +55,36 @@ impl OsUtils {
 
     pub fn add_bin(path: &str, remote: Option<&RemoteInfo>) -> EmptyResult {
         let export_cmd = format!("export PATH=\"{}:$PATH\"", path);
+        let root_dir = DirUtils::root_dir(remote)?;
+        let file_path = root_dir.join(".bashrc").to_string_lossy().to_string();
 
         if let Some(remote) = remote {
             // Remote: only append if not already present
             let check_cmd = format!(
-                "grep -Fxq '{}' ~/.bashrc || echo '{}' >> ~/.bashrc",
-                export_cmd, export_cmd
+                "grep -Fxq '{export_cmd}' {file_path} || echo '{export_cmd}' >> {file_path}"
             );
-            let source_cmd = format!("{} && source ~/.bashrc", check_cmd);
+            let source_cmd = format!("{check_cmd} && source {file_path}");
             let res = CommandUtils::run_command_str(&source_cmd, Some(remote))?;
             if res.status != 0 {
                 error!("Failed to add bin path remotely: {}", res.stderr);
                 return Err("Failed to add bin path remotely".into());
             }
             info!(
-                "Ensured '{}' is in PATH in remote ~/.bashrc and refreshed session",
+                "Ensured '{}' is in PATH in remote {file_path} and refreshed session",
                 path
             );
         } else {
             // Local: only append if not already present
-            let bashrc_path = std::path::Path::new(&std::env::var("HOME")?).join(".bashrc");
-            let contents = std::fs::read_to_string(&bashrc_path).unwrap_or_default();
+            let contents = std::fs::read_to_string(&file_path).unwrap_or_default();
             if !contents.contains(&export_cmd) {
                 let mut file = fs::OpenOptions::new()
                     .append(true)
                     .create(true)
-                    .open(&bashrc_path)?;
+                    .open(&file_path)?;
                 writeln!(file, "{}", export_cmd)?;
-                info!("Added '{}' to PATH in local ~/.bashrc", path);
+                info!("Added '{path}' to PATH in local {file_path}");
             } else {
-                info!("PATH already contains '{}', skipping", path);
+                info!("PATH already contains '{path}', skipping");
             }
         }
 
@@ -196,8 +197,8 @@ impl OsUtils {
 
         if res.status != 0 {
             error!(
-                "❌ Remote extraction of '{}' failed: {}",
-                file_path, res.stderr
+                "❌ Remote extraction of '{}' failed\nstdout: {}\nstderr: {}",
+                file_path, res.stdout, res.stderr
             );
             return Err(format!("Remote extraction of '{}' failed", file_path).into());
         }
