@@ -218,6 +218,10 @@ impl Hook for HookCustom {
         self.config.hook_type
     }
 
+    fn continue_on_error(&self) -> bool {
+        self.config.continue_on_error
+    }
+
     fn run(&self, ctx: &HookContext<'_, AppState>) -> EmptyResult {
         info!("Executing custom hook: {}", self.config.name);
 

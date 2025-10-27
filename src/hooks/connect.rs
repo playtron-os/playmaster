@@ -130,6 +130,10 @@ impl Hook for HookConnect {
         HookType::Connect
     }
 
+    fn continue_on_error(&self) -> bool {
+        false
+    }
+
     fn run(&self, ctx: &HookContext<'_, AppState>) -> EmptyResult {
         if let models::args::Command::Run {
             mode: Some(mode), ..

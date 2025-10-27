@@ -2,22 +2,6 @@ use crate::models::config::{Config, Dependency, InstallSpec};
 
 impl Config {
     pub fn add_flutter_defaults(&mut self) {
-        if !self.dependencies.iter().any(|d| d.name == "git") {
-            let git_dep = Dependency {
-                name: "git".into(),
-                min_version: "2.0.0".into(),
-                version_command: "git --version | awk '{print $3}'".into(),
-                install: Some(InstallSpec {
-                    tool: "git".into(), // Fedora / RHEL package name
-                    version: None,
-                    bin_path: None,
-                    setup: None,
-                    source: None,
-                }),
-            };
-            self.dependencies.push(git_dep);
-        }
-
         if !self.dependencies.iter().any(|d| d.name == "flutter") {
             let flutter_dep = Dependency {
                 name: "flutter".into(),

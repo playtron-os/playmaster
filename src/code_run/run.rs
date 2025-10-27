@@ -61,10 +61,13 @@ impl CodeRun {
         &self,
         ctx: &HookContext<'_, AppState>,
         hook_type: hooks::iface::HookType,
+        has_error: bool,
     ) -> EmptyResult {
         let hooks_to_run = self.hooks.hooks_of_type(hook_type);
         for hook in hooks_to_run {
-            hook.run(ctx)?;
+            if hook.continue_on_error() || !has_error {
+                hook.run(ctx)?;
+            }
         }
         Ok(())
     }
@@ -87,7 +90,7 @@ impl CodeRun {
         let mut has_error = false;
 
         for hook_type in hooks::iface::HookType::pre_hooks() {
-            if let Err(err) = self.run_hooks_of_type(&ctx, hook_type) {
+            if let Err(err) = self.run_hooks_of_type(&ctx, hook_type, has_error) {
                 error!("Pre-hook error {:?} failed: {}", hook_type, err);
                 has_error = true;
 
@@ -108,8 +111,9 @@ impl CodeRun {
         }
 
         for hook_type in hooks::iface::HookType::post_hooks() {
-            if let Err(err) = self.run_hooks_of_type(&ctx, hook_type) {
+            if let Err(err) = self.run_hooks_of_type(&ctx, hook_type, has_error) {
                 error!("Post-hook {:?} failed: {}", hook_type, err);
+                has_error = true;
             }
         }
 

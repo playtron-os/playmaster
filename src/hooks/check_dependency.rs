@@ -281,6 +281,10 @@ impl Hook for HookCheckDependency {
         HookType::VerifySystem
     }
 
+    fn continue_on_error(&self) -> bool {
+        true
+    }
+
     fn run(&self, ctx: &HookContext<'_, AppState>) -> EmptyResult {
         info!("Checking dependencies...");
 

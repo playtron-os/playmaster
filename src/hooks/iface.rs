@@ -67,6 +67,9 @@ impl<'a> HookContext<'a, AppState> {
 /// Trait that all hook implementations must adhere to.
 pub trait Hook {
     fn get_type(&self) -> HookType;
+    fn continue_on_error(&self) -> bool {
+        false
+    }
     fn run(&self, ctx: &HookContext<'_, AppState>) -> EmptyResult;
 }
 

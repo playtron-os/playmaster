@@ -93,7 +93,11 @@ pub struct HookConfig {
     pub name: String,
     pub hook_type: HookType,
     #[serde(rename = "async")]
+    #[serde(default)]
     pub is_async: bool,
+    #[serde(default)]
+    pub continue_on_error: bool,
     pub command: String,
+    #[serde(default)]
     pub env: Option<HashMap<String, String>>,
 }
