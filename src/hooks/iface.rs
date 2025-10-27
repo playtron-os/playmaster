@@ -51,6 +51,12 @@ impl<'a, State> HookContext<'a, State> {
             .read()
             .auto_err("Failed to acquire read lock for state")
     }
+
+    pub fn write_state(&self) -> ResultWithError<std::sync::RwLockWriteGuard<'_, State>> {
+        self.state
+            .write()
+            .auto_err("Failed to acquire write lock for state")
+    }
 }
 
 impl<'a> HookContext<'a, AppState> {
@@ -61,6 +67,11 @@ impl<'a> HookContext<'a, AppState> {
             .auto_err("Failed to acquire write lock")?;
         state.remote = Some(remote);
         Ok(())
+    }
+
+    pub fn get_root_dir(&self) -> ResultWithError<String> {
+        let state = self.read_state()?;
+        Ok(state.root_dir.clone())
     }
 }
 

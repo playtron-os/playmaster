@@ -11,11 +11,7 @@ use crate::{
         app_state::{AppState, RemoteInfo},
         args::AppMode,
     },
-    utils::{
-        command::CommandUtils,
-        dir::DirUtils,
-        errors::{EmptyResult, OptionResultTrait, ResultTrait as _, ResultWithError},
-    },
+    utils::errors::{EmptyResult, OptionResultTrait, ResultTrait as _, ResultWithError},
 };
 
 /// Hook to establish connection to remote host if needed.
@@ -127,24 +123,6 @@ impl HookConnect {
 
         Ok(())
     }
-
-    fn create_bashrc_if_not_existing(&self, ctx: &HookContext<'_, AppState>) -> EmptyResult {
-        let state = ctx.read_state().unwrap();
-        let remote = state.remote.as_ref();
-
-        let file_dir = DirUtils::root_dir(remote)?;
-        let file_path = file_dir.join(".bashrc");
-        CommandUtils::run_command_str(
-            &format!(
-                "mkdir -p {} && touch {}",
-                file_dir.to_string_lossy(),
-                file_path.to_string_lossy()
-            ),
-            remote,
-        )?;
-
-        Ok(())
-    }
 }
 
 impl Hook for HookConnect {
@@ -171,7 +149,6 @@ impl Hook for HookConnect {
         }
 
         self.establish_ssh_connection(ctx)?;
-        self.create_bashrc_if_not_existing(ctx)?;
 
         Ok(())
     }

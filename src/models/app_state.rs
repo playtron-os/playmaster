@@ -22,10 +22,18 @@ pub struct CommandOutput {
 #[derive(Debug, Default, Clone)]
 pub struct AppState {
     pub remote: Option<RemoteInfo>,
+    pub os_info: OsInfo,
+    // TODO: Implement ask for sudo password
+    pub sudo_password: String,
+    pub root_dir: String,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct OsInfo {
+    pub is_ostree: bool,
 }
 
 #[derive(Clone, Debug)]
-#[allow(dead_code)]
 pub struct RemoteInfo {
     pub user: String,
     pub host: String,
@@ -76,7 +84,7 @@ impl RemoteInfo {
                     let chunk = String::from_utf8_lossy(&out_buf[..n]);
                     // print without forcing newlines so carriage returns updates correctly
                     if chunk != "exited" {
-                        print!("{chunk}");
+                        print!("[Remote Log]: {chunk}");
                     }
                     std::io::stdout().flush().ok();
                     stdout.push_str(&chunk);
@@ -93,7 +101,7 @@ impl RemoteInfo {
                 Ok(n) if n > 0 => {
                     made_progress = true;
                     let chunk = String::from_utf8_lossy(&err_buf[..n]);
-                    eprint!("{chunk}");
+                    eprint!("[Remote Error Log]: {chunk}");
                     std::io::stderr().flush().ok();
                     stderr.push_str(&chunk);
                 }

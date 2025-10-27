@@ -8,36 +8,36 @@ use std::{
 use rand::{Rng as _, distr::Alphanumeric};
 
 use crate::{
-    models::app_state::RemoteInfo,
+    hooks::iface::HookContext,
+    models::app_state::{AppState, RemoteInfo},
     utils::errors::{EmptyResult, ResultWithError},
 };
+
+pub enum InstallType {
+    File,
+    Package,
+}
 
 pub struct OsUtils {}
 
 impl OsUtils {
-    #[allow(dead_code)]
-    pub fn is_package_installed(
-        package: &str,
-        remote: Option<&RemoteInfo>,
-    ) -> ResultWithError<bool> {
+    pub fn setup_state(ctx: &HookContext<'_, AppState>) -> EmptyResult {
         #[cfg(target_os = "linux")]
         {
-            crate::linux::utils::os::OsUtils::is_package_installed(package, remote)
+            crate::linux::utils::os::OsUtils::setup_state(ctx)?;
         }
-        #[cfg(not(target_os = "linux"))]
-        {
-            false
-        }
+
+        Ok(())
     }
 
-    pub fn install_file(
-        file_path: &str,
-        sudo_password: &str,
-        remote: Option<&RemoteInfo>,
+    pub fn install(
+        install_type: InstallType,
+        ctx: &HookContext<'_, AppState>,
+        arg: &str,
     ) -> EmptyResult {
         #[cfg(target_os = "linux")]
         {
-            crate::linux::utils::os::OsUtils::install_file(file_path, sudo_password, remote)
+            crate::linux::utils::os::OsUtils::install_package(install_type, ctx, arg)
         }
         #[cfg(not(target_os = "linux"))]
         {
@@ -45,14 +45,10 @@ impl OsUtils {
         }
     }
 
-    pub fn install_package(
-        package: &str,
-        sudo_password: &str,
-        remote: Option<&RemoteInfo>,
-    ) -> EmptyResult {
+    pub fn set_file_permissions(file_path: &Path) -> EmptyResult {
         #[cfg(target_os = "linux")]
         {
-            crate::linux::utils::os::OsUtils::install_package(package, sudo_password, remote)
+            crate::linux::utils::os::OsUtils::set_file_permissions(file_path)
         }
         #[cfg(not(target_os = "linux"))]
         {
@@ -60,10 +56,36 @@ impl OsUtils {
         }
     }
 
-    pub fn add_bin(path: &str, remote: Option<&RemoteInfo>) -> EmptyResult {
+    pub fn add_bin(path: &str, remote: Option<&RemoteInfo>, root_dir: &str) -> EmptyResult {
         #[cfg(target_os = "linux")]
         {
-            crate::linux::utils::os::OsUtils::add_bin(path, remote)
+            crate::linux::utils::os::OsUtils::add_bin(path, remote, root_dir)
+        }
+        #[cfg(not(target_os = "linux"))]
+        {
+            Ok(())
+        }
+    }
+
+    pub fn get_display() -> String {
+        #[cfg(target_os = "linux")]
+        {
+            crate::linux::utils::os::OsUtils::get_display()
+        }
+        #[cfg(not(target_os = "linux"))]
+        {
+            Ok(())
+        }
+    }
+
+    pub fn add_line_to_bashrc(
+        line: &str,
+        remote: Option<&RemoteInfo>,
+        root_dir: &str,
+    ) -> EmptyResult {
+        #[cfg(target_os = "linux")]
+        {
+            crate::linux::utils::os::OsUtils::add_line_to_bashrc(line, remote, root_dir)
         }
         #[cfg(not(target_os = "linux"))]
         {
@@ -78,17 +100,6 @@ impl OsUtils {
             return s.trim().to_string();
         }
         "x86_64".to_string()
-    }
-
-    pub fn set_file_permissions(file_path: &Path) -> EmptyResult {
-        #[cfg(target_os = "linux")]
-        {
-            crate::linux::utils::os::OsUtils::set_file_permissions(file_path)
-        }
-        #[cfg(not(target_os = "linux"))]
-        {
-            Ok(file_path.to_path_buf())
-        }
     }
 
     pub fn write_temp_script(contents: &str) -> ResultWithError<PathBuf> {

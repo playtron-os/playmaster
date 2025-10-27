@@ -5,7 +5,7 @@ use signal_hook::{
 };
 use std::sync::mpsc;
 use std::thread;
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 use crate::{
     code_gen::r#gen::CodeGen,
@@ -74,7 +74,7 @@ fn main() -> EmptyResult {
                 let _ = tx_worker.send("done");
             }
             Err(e) => {
-                eprintln!("❌ Error: {e}");
+                error!("❌ Error: {e}");
                 let _ = tx_worker.send("error");
             }
         }
@@ -88,12 +88,12 @@ fn main() -> EmptyResult {
         for sig in signals.forever() {
             match sig {
                 SIGINT => {
-                    println!("Received SIGINT (Ctrl+C)");
+                    warn!("Received SIGINT (Ctrl+C)");
                     let _ = tx_signal.send("signal");
                     break;
                 }
                 SIGTERM => {
-                    println!("Received SIGTERM (system kill)");
+                    warn!("Received SIGTERM (system kill)");
                     let _ = tx_signal.send("signal");
                     break;
                 }
@@ -104,18 +104,19 @@ fn main() -> EmptyResult {
 
     // 🧩 Wait for either thread to finish
     match rx.recv() {
-        Ok("done") => println!("✅ Execution completed successfully."),
-        Ok("error") => println!("❌ Execution ended with error."),
+        Ok("done") => info!("✅ Execution completed successfully."),
+        Ok("error") => error!("❌ Execution ended with error."),
         Ok("signal") => {
-            println!("⚠️ Termination signal received.");
+            warn!("⚠️ Termination signal received.");
             if let Err(err) = ExecutionUtils::set_running(false) {
                 error!("Failed to set running to false: {}", err);
             }
-            if let Err(err) = CommandUtils::terminate_all_cmds() {
+
+            if let Err(err) = CommandUtils::terminate_all_cmds("") {
                 error!("Failed to terminate running commands: {}", err);
             }
         }
-        _ => println!("Unknown exit reason."),
+        _ => error!("Unknown exit reason."),
     }
 
     Ok(())

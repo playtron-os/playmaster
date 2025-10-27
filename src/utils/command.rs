@@ -13,7 +13,6 @@ use tracing::{error, info};
 use crate::{
     models::app_state::{CommandOutput, RemoteInfo},
     utils::{
-        dir::DirUtils,
         errors::{EmptyResult, ResultTrait, ResultWithError},
         file_logger::FileLogger,
     },
@@ -56,9 +55,9 @@ impl CommandUtils {
         Ok(())
     }
 
-    pub fn terminate_all_cmds() -> EmptyResult {
+    pub fn terminate_all_cmds(root_dir: &str) -> EmptyResult {
         Self::terminate_local_cmds()?;
-        Self::terminate_remote_cmds()?;
+        Self::terminate_remote_cmds(root_dir)?;
         Ok(())
     }
 
@@ -95,7 +94,7 @@ impl CommandUtils {
         Ok(())
     }
 
-    fn terminate_remote_cmds() -> EmptyResult {
+    fn terminate_remote_cmds(root_dir: &str) -> EmptyResult {
         let mut vec = RUNNING_REMOTE_CMDS
             .lock()
             .auto_err("Failed to lock RUNNING_REMOTE_CMDS")?;
@@ -105,6 +104,7 @@ impl CommandUtils {
             Self::run_command_str(
                 &format!("pkill -f \"{}\"", command.command),
                 Some(&command.remote),
+                root_dir,
             )?;
         }
 
@@ -114,18 +114,19 @@ impl CommandUtils {
     pub fn run_command_str(
         cmd: &str,
         remote: Option<&RemoteInfo>,
+        root_dir: &str,
     ) -> ResultWithError<CommandOutput> {
-        let cmd = CommandUtils::with_env_source(remote, cmd)?;
+        let cmd = CommandUtils::with_env_source(root_dir, cmd)?;
 
         if let Some(remote) = remote {
             let res = remote.exec(&cmd)?;
             Ok(res)
         } else {
-            let output = std::process::Command::new("sh")
+            let output = std::process::Command::new("bash")
                 .arg("-c")
                 .arg(cmd)
-                .stdout(std::process::Stdio::piped())
-                .stderr(std::process::Stdio::piped())
+                .stdout(std::process::Stdio::inherit())
+                .stderr(std::process::Stdio::inherit())
                 .output()?;
             Ok(CommandOutput {
                 stdout: String::from_utf8_lossy(&output.stdout).to_string(),
@@ -137,6 +138,7 @@ impl CommandUtils {
 
     pub fn copy_file_to_remote(
         remote: &RemoteInfo,
+        root_dir: &str,
         local_path: &str,
         remote_path: &Path,
     ) -> EmptyResult {
@@ -163,6 +165,7 @@ impl CommandUtils {
         if let Err(err) = Self::run_command_str(
             &format!("chmod +x {}", remote_path.to_string_lossy()),
             Some(remote),
+            root_dir,
         ) {
             error!(
                 "Failed to set execute permissions on remote file '{:?}': {}",
@@ -175,10 +178,15 @@ impl CommandUtils {
 
     pub fn sync_dir_to_remote(
         remote: &RemoteInfo,
+        root_dir: &str,
         local_path: &str,
         remote_path: &str,
     ) -> EmptyResult {
-        CommandUtils::run_command_str(&format!("mkdir -p {}", remote_path), Some(remote))?;
+        CommandUtils::run_command_str(
+            &format!("mkdir -p {}", remote_path),
+            Some(remote),
+            root_dir,
+        )?;
 
         let ssh_target = format!("{}@{}", remote.user, remote.host);
         let ssh_cmd = format!("ssh -p {}", remote.port);
@@ -275,12 +283,10 @@ impl CommandUtils {
         .into_owned()
     }
 
-    pub fn with_env_source(remote: Option<&RemoteInfo>, str: &str) -> ResultWithError<String> {
-        let root_dir = DirUtils::root_dir(remote)?;
+    pub fn with_env_source(root_dir: &str, str: &str) -> ResultWithError<String> {
         Ok(format!(
-            "(source {}/.bashrc > /dev/null 2>&1 || true) && {}",
-            root_dir.to_string_lossy(),
-            str
+            "source {}/.bashrc > /dev/null 2>&1 || true; {}",
+            root_dir, str
         ))
     }
 }

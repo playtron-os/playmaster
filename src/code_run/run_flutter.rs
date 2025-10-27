@@ -1,8 +1,9 @@
 use std::{
-    env, fs,
+    fs,
     io::{BufRead as _, BufReader},
     path::{Path, PathBuf},
     process::{Child, Command, Stdio},
+    str::FromStr,
 };
 
 use serde_yaml::{Mapping, Value};
@@ -22,6 +23,7 @@ use crate::{
         command::CommandUtils,
         errors::{EmptyResult, ResultWithError},
         flutter::FlutterUtils,
+        os::OsUtils,
     },
 };
 
@@ -39,21 +41,21 @@ impl CodeRunTrait for RunFlutter {
 
         let exec_dir = if remote.is_some() {
             // Use remote path for command execution context
-            utils::dir::DirUtils::root_dir(remote)?.join("flutter_app")
+            PathBuf::from_str(&state.root_dir)?.join("flutter_app")
         } else {
             utils::dir::DirUtils::curr_dir()?
         };
 
         // Prepare environment
-        self.prepare_env(remote, &exec_dir)?;
+        self.prepare_env(remote, &exec_dir, &state.root_dir)?;
 
         // Execute either locally or remotely
         if let Some(remote) = remote {
             info!("Running Flutter tests remotely");
-            self.execute_remote(remote, &exec_dir, features)
+            self.execute_remote(remote, &exec_dir, &state.root_dir, features)
         } else {
             info!("Running Flutter tests locally\n");
-            self.execute_local(&exec_dir, features)
+            self.execute_local(&exec_dir, &state.root_dir, features)
         }
     }
 }
@@ -63,15 +65,20 @@ impl RunFlutter {
         Self {}
     }
 
-    fn prepare_env(&self, remote: Option<&RemoteInfo>, exec_dir: &Path) -> EmptyResult {
+    fn prepare_env(
+        &self,
+        remote: Option<&RemoteInfo>,
+        exec_dir: &Path,
+        root_dir: &str,
+    ) -> EmptyResult {
         self.build()?;
 
         if let Some(remote) = remote {
-            self.sync_build(remote, exec_dir)?;
-            self.sync_tests(remote, exec_dir)?;
-            self.sync_driver(remote, exec_dir)?;
-            self.sync_linux(remote, exec_dir)?;
-            self.sync_pubspec(remote, exec_dir)?;
+            self.sync_build(remote, root_dir, exec_dir)?;
+            self.sync_tests(remote, root_dir, exec_dir)?;
+            self.sync_driver(remote, root_dir, exec_dir)?;
+            self.sync_linux(remote, root_dir, exec_dir)?;
+            self.sync_pubspec(remote, root_dir, exec_dir)?;
         }
 
         Ok(())
@@ -96,7 +103,7 @@ impl RunFlutter {
         Ok(())
     }
 
-    fn sync_build(&self, remote: &RemoteInfo, exec_dir: &Path) -> EmptyResult {
+    fn sync_build(&self, remote: &RemoteInfo, root_dir: &str, exec_dir: &Path) -> EmptyResult {
         info!("Syncing build to remote...");
 
         let local_flutter_dir = utils::dir::DirUtils::curr_dir()?
@@ -114,6 +121,7 @@ impl RunFlutter {
 
         utils::command::CommandUtils::sync_dir_to_remote(
             remote,
+            root_dir,
             local_flutter_dir.to_string_lossy().as_ref(),
             remote_flutter_dir.to_string_lossy().as_ref(),
         )?;
@@ -121,7 +129,7 @@ impl RunFlutter {
         Ok(())
     }
 
-    fn sync_tests(&self, remote: &RemoteInfo, exec_dir: &Path) -> EmptyResult {
+    fn sync_tests(&self, remote: &RemoteInfo, root_dir: &str, exec_dir: &Path) -> EmptyResult {
         info!("Syncing integration tests to remote...");
 
         let local_flutter_dir = utils::dir::DirUtils::curr_dir()?.join("integration_test");
@@ -129,6 +137,7 @@ impl RunFlutter {
 
         utils::command::CommandUtils::sync_dir_to_remote(
             remote,
+            root_dir,
             local_flutter_dir.to_string_lossy().as_ref(),
             remote_flutter_dir.to_string_lossy().as_ref(),
         )?;
@@ -136,7 +145,7 @@ impl RunFlutter {
         Ok(())
     }
 
-    fn sync_driver(&self, remote: &RemoteInfo, exec_dir: &Path) -> EmptyResult {
+    fn sync_driver(&self, remote: &RemoteInfo, root_dir: &str, exec_dir: &Path) -> EmptyResult {
         info!("Syncing test_driver to remote...");
 
         let local_flutter_dir = utils::dir::DirUtils::curr_dir()?.join("test_driver");
@@ -144,6 +153,7 @@ impl RunFlutter {
 
         utils::command::CommandUtils::sync_dir_to_remote(
             remote,
+            root_dir,
             local_flutter_dir.to_string_lossy().as_ref(),
             remote_flutter_dir.to_string_lossy().as_ref(),
         )?;
@@ -151,7 +161,7 @@ impl RunFlutter {
         Ok(())
     }
 
-    fn sync_linux(&self, remote: &RemoteInfo, exec_dir: &Path) -> EmptyResult {
+    fn sync_linux(&self, remote: &RemoteInfo, root_dir: &str, exec_dir: &Path) -> EmptyResult {
         info!("Syncing linux to remote...");
 
         let local_flutter_dir = utils::dir::DirUtils::curr_dir()?.join("linux");
@@ -159,6 +169,7 @@ impl RunFlutter {
 
         utils::command::CommandUtils::sync_dir_to_remote(
             remote,
+            root_dir,
             local_flutter_dir.to_string_lossy().as_ref(),
             remote_flutter_dir.to_string_lossy().as_ref(),
         )?;
@@ -202,7 +213,7 @@ impl RunFlutter {
         Ok(out)
     }
 
-    fn sync_pubspec(&self, remote: &RemoteInfo, exec_dir: &Path) -> EmptyResult {
+    fn sync_pubspec(&self, remote: &RemoteInfo, root_dir: &str, exec_dir: &Path) -> EmptyResult {
         info!("Syncing cleaned pubspec.yaml to remote…");
 
         let local_pubspec_file = utils::dir::DirUtils::curr_dir()?.join("pubspec.yaml");
@@ -221,6 +232,7 @@ impl RunFlutter {
         // Send to remote (or write locally as fallback)
         utils::command::CommandUtils::copy_file_to_remote(
             remote,
+            root_dir,
             temp.path().to_string_lossy().as_ref(),
             &remote_pubspec_file,
         )?;
@@ -228,8 +240,13 @@ impl RunFlutter {
         Ok(())
     }
 
-    fn execute_local(&self, exec_dir: &PathBuf, features: &[FeatureTest]) -> EmptyResult {
-        let child = self.spawn_flutter_command(exec_dir)?;
+    fn execute_local(
+        &self,
+        exec_dir: &PathBuf,
+        root_dir: &str,
+        features: &[FeatureTest],
+    ) -> EmptyResult {
+        let child = self.spawn_flutter_command(exec_dir, root_dir)?;
         self.process_output(child, features)
     }
 
@@ -237,15 +254,15 @@ impl RunFlutter {
         &self,
         remote: &RemoteInfo,
         exec_dir: &Path,
+        root_dir: &str,
         features: &[FeatureTest],
     ) -> EmptyResult {
         info!("Executing tests remotely via SSH...\n");
 
         let cmd = format!(
-            "cd {} && DISPLAY={} {}",
+            "cd {} && {}",
             exec_dir.display(),
-            self.get_display(),
-            self.get_flutter_drive_command_str(Some(remote))?,
+            self.get_flutter_drive_command_str(root_dir)?,
         );
         info!("Remote command: {}\n", cmd);
 
@@ -253,26 +270,19 @@ impl RunFlutter {
         self.process_remote_output(output, features)
     }
 
-    fn get_display(&self) -> String {
-        env::var("DISPLAY").unwrap_or_else(|_| ":0".to_string())
-    }
-
-    fn spawn_flutter_command(&self, exec_dir: &PathBuf) -> ResultWithError<Child> {
+    fn spawn_flutter_command(&self, exec_dir: &PathBuf, root_dir: &str) -> ResultWithError<Child> {
         let mut command = Command::new("sh");
         command
             .current_dir(exec_dir)
-            .args(["-c", &self.get_flutter_drive_command_str(None)?])
-            .env("DISPLAY", self.get_display())
+            .args(["-c", &self.get_flutter_drive_command_str(root_dir)?])
+            .env("DISPLAY", OsUtils::get_display())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
 
         Ok(command.spawn()?)
     }
 
-    fn get_flutter_drive_command_str(
-        &self,
-        remote: Option<&RemoteInfo>,
-    ) -> ResultWithError<String> {
+    fn get_flutter_drive_command_str(&self, root_dir: &str) -> ResultWithError<String> {
         let binary_name = FlutterUtils::get_name()?;
 
         let binary = format!("build/linux/x64/debug/bundle/{binary_name}");
@@ -281,7 +291,7 @@ impl RunFlutter {
             "--driver=test_driver/integration_test.dart --target=integration_test/generated/all_tests.dart {binary_arg} --no-headless -d linux"
         );
 
-        CommandUtils::with_env_source(remote, &format!("flutter drive {args}"))
+        CommandUtils::with_env_source(root_dir, &format!("flutter drive {args}"))
     }
 
     fn process_output(&self, mut child: Child, features: &[FeatureTest]) -> EmptyResult {

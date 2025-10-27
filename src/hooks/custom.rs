@@ -68,7 +68,7 @@ impl HookCustom {
     }
 
     /// Local synchronous execution
-    fn run_local_sync(&self) -> EmptyResult {
+    fn run_local_sync(&self, root_dir: &str) -> EmptyResult {
         // Build the full command string using your existing helper
         let cmd = self.build_cmd()?;
 
@@ -76,7 +76,7 @@ impl HookCustom {
         let mut command = Command::new("bash");
         command
             .arg("-c")
-            .arg(&CommandUtils::with_env_source(None, &cmd.command)?);
+            .arg(&CommandUtils::with_env_source(root_dir, &cmd.command)?);
         trace!(
             "[{}] Running sync command: {:?}",
             self.config.name, &command
@@ -118,14 +118,14 @@ impl HookCustom {
     }
 
     /// Local asynchronous execution
-    fn run_local_async(&self) -> EmptyResult {
+    fn run_local_async(&self, root_dir: &str) -> EmptyResult {
         let cmd = self.build_cmd()?;
         let name = self.config.name.clone();
 
         let mut command = Command::new("bash");
         command
             .arg("-c")
-            .arg(&CommandUtils::with_env_source(None, &cmd.command)?)
+            .arg(&CommandUtils::with_env_source(root_dir, &cmd.command)?)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
         trace!("[{name}] Running async command: {:?}", &command);
@@ -140,16 +140,17 @@ impl HookCustom {
     }
 
     /// Remote synchronous execution with proper stdout/stderr logging
-    fn run_remote_sync(&self, remote: &RemoteInfo) -> EmptyResult {
+    fn run_remote_sync(&self, remote: &RemoteInfo, root_dir: &str) -> EmptyResult {
         let cmd = self.build_cmd()?;
 
         // Execute remote command and capture stdout/stderr separately
         CommandUtils::copy_file_to_remote(
             remote,
+            root_dir,
             &cmd.file_path.to_string_lossy(),
             &cmd.file_path,
         )?;
-        let output = CommandUtils::run_command_str(&cmd.command, Some(remote))?;
+        let output = CommandUtils::run_command_str(&cmd.command, Some(remote), root_dir)?;
 
         // Log stdout/stderr to the same files as local execution
         let stdout_logger = FileLogger::new(&format!("{}.stdout.log", self.config.name));
@@ -178,11 +179,12 @@ impl HookCustom {
     }
 
     /// Remote asynchronous execution with logging
-    fn run_remote_async(&self, remote: &RemoteInfo) -> EmptyResult {
+    fn run_remote_async(&self, remote: &RemoteInfo, root_dir: &str) -> EmptyResult {
         let cmd = self.build_cmd()?;
 
         CommandUtils::copy_file_to_remote(
             remote,
+            root_dir,
             &cmd.file_path.to_string_lossy(),
             &cmd.file_path,
         )?;
@@ -190,6 +192,7 @@ impl HookCustom {
         // Start the remote command
         let name = self.config.name.clone();
         let remote_clone = remote.clone();
+        let root_dir = root_dir.to_owned();
 
         thread::spawn(move || {
             if let Err(err) = CommandUtils::track_remote_cmd(
@@ -203,7 +206,9 @@ impl HookCustom {
                 error!("[{name}] Failed to track remote async command: {}", err);
             }
 
-            if let Err(err) = CommandUtils::run_command_str(&cmd.command, Some(&remote_clone)) {
+            if let Err(err) =
+                CommandUtils::run_command_str(&cmd.command, Some(&remote_clone), &root_dir)
+            {
                 error!("[{name}] Failed to start remote async command: {}", err);
                 return;
             }
@@ -226,17 +231,18 @@ impl Hook for HookCustom {
 
     fn run(&self, ctx: &HookContext<'_, AppState>) -> EmptyResult {
         info!("Executing custom hook: {}", self.config.name);
+        let root_dir = ctx.get_root_dir()?;
 
         if let Some(remote) = &ctx.state.read().unwrap().remote {
             if self.config.is_async {
-                self.run_remote_async(remote)
+                self.run_remote_async(remote, &root_dir)
             } else {
-                self.run_remote_sync(remote)
+                self.run_remote_sync(remote, &root_dir)
             }
         } else if self.config.is_async {
-            self.run_local_async()
+            self.run_local_async(&root_dir)
         } else {
-            self.run_local_sync()
+            self.run_local_sync(&root_dir)
         }
     }
 }

@@ -12,13 +12,12 @@ use crate::{
     },
     utils::{
         command::CommandUtils,
-        dir::DirUtils,
         downloader_def::{
             downloader::Downloader, providers::bitbucket::BitbucketSourceProvider,
             r#trait::SourceProvider,
         },
         errors::{EmptyResult, ResultTrait as _, ResultWithError},
-        os::OsUtils,
+        os::{InstallType, OsUtils},
         semver::SemverUtils,
     },
 };
@@ -73,6 +72,7 @@ impl HookCheckDependency {
     ) -> ResultWithError<String> {
         let state = ctx.read_state()?;
         let remote = state.remote.as_ref();
+        let root_dir = ctx.get_root_dir()?;
 
         match source {
             crate::models::config::InstallSource::Bitbucket { repo, token } => {
@@ -86,7 +86,7 @@ impl HookCheckDependency {
                 self.download_with_provider(provider, version)
             }
             crate::models::config::InstallSource::Url { url } => {
-                self.download_url(url, remote, version)
+                self.download_url(url, remote, &root_dir, version)
             }
         }
     }
@@ -116,6 +116,7 @@ impl HookCheckDependency {
         &self,
         url: &str,
         remote: Option<&RemoteInfo>,
+        root_dir: &str,
         version: Option<String>,
     ) -> ResultWithError<String> {
         let mut url = url.to_string();
@@ -128,7 +129,7 @@ impl HookCheckDependency {
 
         if let Some(remote) = remote {
             let curl_cmd = format!("stdbuf -eL curl -L -o {} '{}'", dest_path, url);
-            CommandUtils::run_command_str(&curl_cmd, Some(remote))?;
+            CommandUtils::run_command_str(&curl_cmd, Some(remote), root_dir)?;
         } else {
             self.download_url_local_with_progress(&url, &dest_path)?;
             info!("Downloaded artifact locally to {}", dest_path);
@@ -179,17 +180,16 @@ impl HookCheckDependency {
 
         let state = ctx.read_state()?;
         let remote = state.remote.as_ref();
-        let password = remote.map(|r| r.password.clone()).unwrap_or_default();
 
         if let Some(source) = &install.source {
             let install_file = self.download_tool(ctx, source, install.version.clone())?;
-            OsUtils::install_file(&install_file, &password, remote)?;
+            OsUtils::install(InstallType::File, ctx, &install_file)?;
         } else {
-            return OsUtils::install_package(&install.tool, &password, remote);
+            OsUtils::install(InstallType::Package, ctx, &install.tool)?;
         };
 
-        self.setup_bin_path(install, remote)?;
-        self.run_setup_cmd(install, remote)?;
+        self.setup_bin_path(install, remote, &state.root_dir)?;
+        self.run_setup_cmd(install, remote, &state.root_dir)?;
 
         info!("Tool {} installed successfully", install.tool);
 
@@ -204,8 +204,12 @@ impl HookCheckDependency {
     ) -> ResultWithError<bool> {
         let state = ctx.read_state()?;
         let remote = state.remote.as_ref();
-        let res = CommandUtils::run_command_str(dep.version_command.as_str(), remote)
-            .auto_err(format!("Failed to execute command: {}", dep.version_command).as_str())?;
+        let res = CommandUtils::run_command_str(
+            dep.version_command.as_str(),
+            remote,
+            &ctx.get_root_dir()?,
+        )
+        .auto_err(format!("Failed to execute command: {}", dep.version_command).as_str())?;
         let output = res.stdout.trim().to_owned();
 
         // Validate output is a version string
@@ -244,26 +248,34 @@ impl HookCheckDependency {
         Ok(false)
     }
 
-    fn setup_bin_path(&self, install: &InstallSpec, remote: Option<&RemoteInfo>) -> EmptyResult {
+    fn setup_bin_path(
+        &self,
+        install: &InstallSpec,
+        remote: Option<&RemoteInfo>,
+        root_dir: &str,
+    ) -> EmptyResult {
         if let Some(bin_path) = &install.bin_path {
-            let root_dir = DirUtils::root_dir(remote)?;
-
             let full_path = if bin_path.starts_with('/') || bin_path.starts_with("~") {
                 bin_path.to_string()
             } else {
                 format!("~/{}", bin_path)
             }
-            .replace("~", root_dir.to_string_lossy().to_string().as_ref());
+            .replace("~", root_dir);
 
-            OsUtils::add_bin(&full_path, remote)?;
+            OsUtils::add_bin(&full_path, remote, root_dir)?;
         }
         Ok(())
     }
 
-    fn run_setup_cmd(&self, install: &InstallSpec, remote: Option<&RemoteInfo>) -> EmptyResult {
+    fn run_setup_cmd(
+        &self,
+        install: &InstallSpec,
+        remote: Option<&RemoteInfo>,
+        root_dir: &str,
+    ) -> EmptyResult {
         if let Some(setup_cmd) = &install.setup {
             info!("Running setup command: {}", setup_cmd);
-            let res = CommandUtils::run_command_str(setup_cmd, remote)?;
+            let res = CommandUtils::run_command_str(setup_cmd, remote, root_dir)?;
             if res.status != 0 {
                 return Err(format!(
                     "Setup command failed with status {}: {}",

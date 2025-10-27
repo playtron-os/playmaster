@@ -48,6 +48,7 @@ impl CodeRun {
         let mut hooks: Vec<Box<dyn hooks::iface::Hook>> = vec![
             Box::new(hooks::check_dependency::HookCheckDependency::new()),
             Box::new(hooks::connect::HookConnect::new()),
+            Box::new(hooks::setup_state::HookSetupState::new()),
         ];
 
         hooks.extend(config.hooks.iter().map(|hook| {
@@ -106,7 +107,9 @@ impl CodeRun {
             Err("Pre-hook failed".into())
         };
 
-        if let Err(err) = CommandUtils::terminate_all_cmds() {
+        let root_dir = ctx.get_root_dir()?;
+
+        if let Err(err) = CommandUtils::terminate_all_cmds(&root_dir) {
             error!("Failed to terminate running commands: {}", err);
         }
 
@@ -117,7 +120,7 @@ impl CodeRun {
             }
         }
 
-        if let Err(err) = CommandUtils::terminate_all_cmds() {
+        if let Err(err) = CommandUtils::terminate_all_cmds(&root_dir) {
             error!("Failed to terminate running commands: {}", err);
         }
 
