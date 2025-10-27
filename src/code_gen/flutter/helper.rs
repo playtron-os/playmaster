@@ -180,7 +180,7 @@ extension WidgetTesterExtensions on WidgetTester {
     final File imageFile = File(imagePath);
     await Directory(folderPath).create(recursive: true);
 
-    if (update || !await imageFile.exists() || updateScreenshots) {
+    if (update || !imageFile.existsSync() || updateScreenshots) {
       // ✅ Update mode → save new reference image
       await imageFile.writeAsBytes(res);
       debugPrint('Updated reference screenshot: $imagePath');
@@ -230,7 +230,8 @@ extension WidgetTesterExtensions on WidgetTester {
         debugPrint('Saved failed screenshot: $failedImagePath');
 
         throw Exception(
-          '''Screenshot comparison failed for $name, please update screenshots if the changes are expected.
+          '''
+Screenshot comparison failed for $name, please update screenshots if the changes are expected.
 
 Please run the following command to update screenshots:
 flutter test integration_test --dart-define=UPDATE_SCREENSHOTS=true''',
