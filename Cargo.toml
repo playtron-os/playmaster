@@ -10,6 +10,10 @@ assets = [
   { source = "target/release/playmaster", dest = "/usr/bin/playmaster", mode = "755" }
 ]
 
+[package.metadata.generate-rpm.requires]
+bash = "*"
+sshpass = "*"
+
 [dependencies]
 clap = { version = "4.5", features = ["derive"] }
 serde = { version = "1", features = ["derive"] }
