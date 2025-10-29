@@ -266,9 +266,13 @@ flutter test integration_test --dart-define=UPDATE_SCREENSHOTS=true''',
 
   Future<Process> runCommandAsync(String command, String argument) async {
     try {
-      final process = await Process.start(command, [
-        argument,
-      ], mode: ProcessStartMode.detachedWithStdio);
+      final process = await Process.start(
+        command,
+        [
+          argument,
+        ],
+        mode: ProcessStartMode.detachedWithStdio,
+      );
 
       stdout.addStream(process.stdout);
       stderr.addStream(process.stderr);
