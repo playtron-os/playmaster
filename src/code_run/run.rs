@@ -89,6 +89,7 @@ impl CodeRun {
         };
 
         let mut has_error = false;
+        info!("Running pre-execution hooks");
 
         for hook_type in hooks::iface::HookType::pre_hooks() {
             if let Err(err) = self.run_hooks_of_type(&ctx, hook_type, has_error) {
@@ -113,6 +114,7 @@ impl CodeRun {
             error!("Failed to terminate running commands: {}", err);
         }
 
+        info!("Running post-execution hooks");
         for hook_type in hooks::iface::HookType::post_hooks() {
             if let Err(err) = self.run_hooks_of_type(&ctx, hook_type, has_error) {
                 error!("Post-hook {:?} failed: {}", hook_type, err);

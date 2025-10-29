@@ -8,7 +8,7 @@ use std::{
 
 use indicatif::{ProgressBar, ProgressStyle};
 use regex::Regex;
-use tracing::{error, info};
+use tracing::{debug, error, info};
 
 use crate::{
     models::app_state::{CommandOutput, RemoteInfo},
@@ -37,6 +37,8 @@ pub struct CommandUtils {}
 
 impl CommandUtils {
     pub fn track_cmd(name: &str, child: Child) -> EmptyResult {
+        debug!("Tracking local command: {}", name);
+
         let mut vec = RUNNING_CMDS
             .lock()
             .auto_err("Failed to lock RUNNING_CMDS")?;
@@ -48,6 +50,8 @@ impl CommandUtils {
     }
 
     pub fn track_remote_cmd(command: String, remote: RemoteInfo) -> EmptyResult {
+        debug!("Tracking remote command: {}", command);
+
         let mut vec = RUNNING_REMOTE_CMDS
             .lock()
             .auto_err("Failed to lock RUNNING_REMOTE_CMDS")?;
@@ -119,7 +123,10 @@ impl CommandUtils {
         let cmd = CommandUtils::with_env_source(root_dir, cmd)?;
 
         if let Some(remote) = remote {
-            let res = remote.exec(&cmd)?;
+            debug!("Running remote command: {}", cmd);
+            let res = remote
+                .exec(&cmd)
+                .auto_err("Failed to execute remote command")?;
             Ok(res)
         } else {
             let output = std::process::Command::new("bash")
@@ -127,7 +134,12 @@ impl CommandUtils {
                 .arg(cmd)
                 .stdout(std::process::Stdio::piped())
                 .stderr(std::process::Stdio::piped())
-                .output()?;
+                .output()
+                .auto_err("Failed to execute local command")?;
+            debug!(
+                "Command stdout: {}",
+                String::from_utf8_lossy(&output.stdout)
+            );
             Ok(CommandOutput {
                 stdout: String::from_utf8_lossy(&output.stdout).to_string(),
                 stderr: String::from_utf8_lossy(&output.stderr).to_string(),
@@ -142,6 +154,11 @@ impl CommandUtils {
         local_path: &str,
         remote_path: &Path,
     ) -> EmptyResult {
+        debug!(
+            "Copying local file '{}' to remote path '{:?}'",
+            local_path, remote_path
+        );
+
         let sess = remote.get_sess()?;
 
         // Open SFTP session
@@ -182,6 +199,11 @@ impl CommandUtils {
         local_path: &str,
         remote_path: &str,
     ) -> EmptyResult {
+        debug!(
+            "Syncing local directory '{}' to remote path '{}'",
+            local_path, remote_path
+        );
+
         CommandUtils::run_command_str(
             &format!("mkdir -p {}", remote_path),
             Some(remote),
@@ -209,10 +231,16 @@ impl CommandUtils {
             &format!("{}/", local_path.trim_end_matches('/')),
             &format!("{}:{}/", ssh_target, remote_path.trim_end_matches('/')),
         ]);
+        debug!("Running rsync command: {:?}", command);
 
-        let output = command.output()?;
+        let output = command
+            .output()
+            .auto_err("Failed to execute rsync command")?;
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        debug!("rsync stdout: {}", String::from_utf8_lossy(&output.stdout));
+        debug!("rsync stderr: {}", stderr);
+
         if !output.status.success() {
-            let stderr = String::from_utf8_lossy(&output.stderr);
             return Err(format!("rsync failed: {}", stderr).into());
         }
 
@@ -222,6 +250,11 @@ impl CommandUtils {
     /// Fetches the contents of a file from a remote host over SSH
     #[allow(dead_code)]
     pub fn fetch_remote_file(remote: &RemoteInfo, remote_path: &str) -> ResultWithError<String> {
+        debug!(
+            "Fetching remote file '{}' from {}@{}",
+            remote_path, remote.user, remote.host
+        );
+
         let sess = remote.get_sess()?;
 
         // Open SFTP session

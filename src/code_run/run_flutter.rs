@@ -21,7 +21,7 @@ use crate::{
     utils::{
         self,
         command::CommandUtils,
-        errors::{EmptyResult, ResultWithError},
+        errors::{EmptyResult, ResultTrait, ResultWithError},
         flutter::FlutterUtils,
         os::OsUtils,
     },
@@ -299,7 +299,9 @@ impl RunFlutter {
         let reader = BufReader::new(stdout);
 
         let res = self.process_lines(reader.lines(), features);
-        let output = child.wait_with_output()?;
+        let output = child
+            .wait_with_output()
+            .auto_err("Failed to wait for child process when running flutter tests")?;
         let status = output.status;
         if res.is_ok() && !status.success() {
             error!(

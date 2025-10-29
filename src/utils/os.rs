@@ -6,6 +6,7 @@ use std::{
 };
 
 use rand::{Rng as _, distr::Alphanumeric};
+use tracing::{debug, trace};
 
 use crate::{
     hooks::iface::HookContext,
@@ -13,6 +14,7 @@ use crate::{
     utils::errors::{EmptyResult, ResultWithError},
 };
 
+#[derive(Debug)]
 pub enum InstallType {
     File,
     Package,
@@ -22,6 +24,8 @@ pub struct OsUtils {}
 
 impl OsUtils {
     pub fn setup_state(ctx: &HookContext<'_, AppState>) -> EmptyResult {
+        debug!("Setting up OS state");
+
         #[cfg(target_os = "linux")]
         {
             crate::linux::utils::os::OsUtils::setup_state(ctx)?;
@@ -35,6 +39,8 @@ impl OsUtils {
         ctx: &HookContext<'_, AppState>,
         arg: &str,
     ) -> EmptyResult {
+        debug!("Installing {:?} with argument: {}", install_type, arg);
+
         #[cfg(target_os = "linux")]
         {
             crate::linux::utils::os::OsUtils::install_package(install_type, ctx, arg)
@@ -46,6 +52,8 @@ impl OsUtils {
     }
 
     pub fn set_file_permissions(file_path: &Path) -> EmptyResult {
+        debug!("Setting file permissions for: {:?}", file_path);
+
         #[cfg(target_os = "linux")]
         {
             crate::linux::utils::os::OsUtils::set_file_permissions(file_path)
@@ -57,6 +65,13 @@ impl OsUtils {
     }
 
     pub fn add_bin(path: &str, remote: Option<&RemoteInfo>, root_dir: &str) -> EmptyResult {
+        debug!(
+            "Adding binary '{}' to PATH (remote: {}, root_dir: {})",
+            path,
+            remote.is_some(),
+            root_dir
+        );
+
         #[cfg(target_os = "linux")]
         {
             crate::linux::utils::os::OsUtils::add_bin(path, remote, root_dir)
@@ -70,7 +85,9 @@ impl OsUtils {
     pub fn get_display() -> String {
         #[cfg(target_os = "linux")]
         {
-            crate::linux::utils::os::OsUtils::get_display()
+            let display_val = crate::linux::utils::os::OsUtils::get_display();
+            debug!("Detected display: {}", display_val);
+            display_val
         }
         #[cfg(not(target_os = "linux"))]
         {
@@ -83,6 +100,13 @@ impl OsUtils {
         remote: Option<&RemoteInfo>,
         root_dir: &str,
     ) -> EmptyResult {
+        debug!(
+            "Adding line to bashrc: '{}' (remote: {}, root_dir: {})",
+            line,
+            remote.is_some(),
+            root_dir
+        );
+
         #[cfg(target_os = "linux")]
         {
             crate::linux::utils::os::OsUtils::add_line_to_bashrc(line, remote, root_dir)
@@ -97,12 +121,18 @@ impl OsUtils {
         if let Ok(output) = Command::new("uname").arg("-m").output()
             && let Ok(s) = String::from_utf8(output.stdout)
         {
+            debug!("Detected architecture: {}", s.trim());
             return s.trim().to_string();
         }
+
+        debug!("Defaulting architecture to x86_64");
         "x86_64".to_string()
     }
 
     pub fn write_temp_script(contents: &str) -> ResultWithError<PathBuf> {
+        debug!("Writing temporary script");
+        trace!("Script contents:\n{}", contents);
+
         // Generate a random filename like "hook-ABC123.sh"
         let random: String = rand::rng()
             .sample_iter(&Alphanumeric)
