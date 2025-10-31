@@ -6,12 +6,12 @@ use crate::{
     code_run,
     hooks::{
         self,
-        iface::{HookContext, HookListExt as _},
+        iface::{HookContext, HookListExt as _, HookType},
     },
     models::{
         app_state::AppState,
         args::{AppArgs, Command},
-        config::Config,
+        config::{Config, WebhookType},
         feature_test::FeatureTest,
         vars::Vars,
     },
@@ -55,6 +55,17 @@ impl CodeRun {
             Box::new(hooks::custom::HookCustom::new(hook.clone())) as Box<dyn hooks::iface::Hook>
         }));
 
+        // Add result webhooks at the end
+        for webhook_config in &config.webhooks {
+            match webhook_config.webhook_type {
+                WebhookType::Results => {
+                    hooks.push(Box::new(hooks::results::HookResults::new(
+                        webhook_config.clone(),
+                    )));
+                }
+            }
+        }
+
         hooks
     }
 
@@ -74,13 +85,6 @@ impl CodeRun {
     }
 
     pub fn execute(&self) -> EmptyResult {
-        let features = FeatureTest::all_from_curr_dir()?;
-
-        info!(
-            "Executing with config for project type: {:?}",
-            self.config.project_type
-        );
-
         let ctx = HookContext {
             args: &self.args,
             config: &self.config,
@@ -88,13 +92,37 @@ impl CodeRun {
             state: Arc::clone(&self.state),
         };
 
+        let features = match FeatureTest::all_from_curr_dir() {
+            Ok(features) => features,
+            Err(err) => {
+                let err = format!("Failed to load feature tests: {}", err);
+                error!("{}", err);
+                ctx.add_results_error(err)?;
+
+                if let Err(err) = self.run_hooks_of_type(&ctx, HookType::Finished, true) {
+                    let err = format!("Post-hook {:?} failed: {}", HookType::Finished, err);
+                    error!("{}", err);
+                    ctx.add_results_error(err)?;
+                }
+
+                return Err("Failed to load feature tests".into());
+            }
+        };
+
+        info!(
+            "Executing with config for project type: {:?}",
+            self.config.project_type
+        );
+
         let mut has_error = false;
         info!("Running pre-execution hooks");
 
         for hook_type in hooks::iface::HookType::pre_hooks() {
             if let Err(err) = self.run_hooks_of_type(&ctx, hook_type, has_error) {
-                error!("Pre-hook error {:?} failed: {}", hook_type, err);
+                let err = format!("Pre-hook error {:?} failed: {}", hook_type, err);
+                error!("{}", err);
                 has_error = true;
+                ctx.add_results_error(err)?;
 
                 if !ExecutionUtils::is_running() {
                     break;
@@ -117,8 +145,10 @@ impl CodeRun {
         info!("Running post-execution hooks");
         for hook_type in hooks::iface::HookType::post_hooks() {
             if let Err(err) = self.run_hooks_of_type(&ctx, hook_type, has_error) {
-                error!("Post-hook {:?} failed: {}", hook_type, err);
+                let err = format!("Post-hook {:?} failed: {}", hook_type, err);
+                error!("{}", err);
                 has_error = true;
+                ctx.add_results_error(err)?;
             }
         }
 

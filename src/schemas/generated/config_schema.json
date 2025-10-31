@@ -21,6 +21,12 @@
     },
     "state_set": {
       "$ref": "#/$defs/StateSet"
+    },
+    "webhooks": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/WebhookConfig"
+      }
     }
   },
   "required": [
@@ -193,6 +199,21 @@
         "flutter"
       ]
     },
+    "S3Config": {
+      "type": "object",
+      "properties": {
+        "bucket": {
+          "type": "string"
+        },
+        "key_prefix": {
+          "type": "string",
+          "default": ""
+        }
+      },
+      "required": [
+        "bucket"
+      ]
+    },
     "StateSet": {
       "type": "object",
       "properties": {
@@ -209,6 +230,45 @@
       },
       "required": [
         "command"
+      ]
+    },
+    "WebhookConfig": {
+      "type": "object",
+      "properties": {
+        "ignore_error": {
+          "type": "boolean",
+          "default": false
+        },
+        "message_template": {
+          "type": "string",
+          "default": ""
+        },
+        "s3_config": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/S3Config"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "url": {
+          "type": "string"
+        },
+        "webhook_type": {
+          "$ref": "#/$defs/WebhookType"
+        }
+      },
+      "required": [
+        "webhook_type",
+        "url"
+      ]
+    },
+    "WebhookType": {
+      "type": "string",
+      "enum": [
+        "results"
       ]
     }
   }

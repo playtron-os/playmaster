@@ -5,7 +5,7 @@ use signal_hook::{
 };
 use std::sync::mpsc;
 use std::thread;
-use tracing::{error, info, warn};
+use tracing::{debug, error, info, warn};
 
 use crate::{
     code_gen::r#gen::CodeGen,
@@ -50,6 +50,11 @@ fn main() -> EmptyResult {
     // 🧩 Spawn your worker thread
     let tx_worker = tx.clone();
     thread::spawn(move || {
+        debug!(
+            "Worker thread started with args: {:?}, command: {:?}",
+            args, args.command
+        );
+
         let result = match args.command {
             models::args::Command::Run { .. } => {
                 let config = Config::from_curr_dir()?;

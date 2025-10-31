@@ -36,26 +36,27 @@ impl CodeRunTrait for RunFlutter {
     }
 
     fn run(&self, ctx: &HookContext<'_, AppState>, features: &[FeatureTest]) -> EmptyResult {
-        let state = ctx.read_state()?;
-        let remote = state.remote.as_ref();
+        let remote = ctx.get_remote_info()?;
+        let remote = remote.as_ref();
+        let root_dir = ctx.get_root_dir()?;
 
         let exec_dir = if remote.is_some() {
             // Use remote path for command execution context
-            PathBuf::from_str(&state.root_dir)?.join("flutter_app")
+            PathBuf::from_str(&root_dir)?.join("flutter_app")
         } else {
             utils::dir::DirUtils::curr_dir()?
         };
 
         // Prepare environment
-        self.prepare_env(remote, &exec_dir, &state.root_dir)?;
+        self.prepare_env(remote, &exec_dir, &root_dir)?;
 
         // Execute either locally or remotely
         if let Some(remote) = remote {
             info!("Running Flutter tests remotely");
-            self.execute_remote(remote, &exec_dir, &state.root_dir, features)
+            self.execute_remote(ctx, remote, &exec_dir, &root_dir, features)
         } else {
             info!("Running Flutter tests locally\n");
-            self.execute_local(&exec_dir, &state.root_dir, features)
+            self.execute_local(ctx, &exec_dir, &root_dir, features)
         }
     }
 }
@@ -242,16 +243,18 @@ impl RunFlutter {
 
     fn execute_local(
         &self,
+        ctx: &HookContext<'_, AppState>,
         exec_dir: &PathBuf,
         root_dir: &str,
         features: &[FeatureTest],
     ) -> EmptyResult {
         let child = self.spawn_flutter_command(exec_dir, root_dir)?;
-        self.process_output(child, features)
+        self.process_output(ctx, child, features)
     }
 
     fn execute_remote(
         &self,
+        ctx: &HookContext<'_, AppState>,
         remote: &RemoteInfo,
         exec_dir: &Path,
         root_dir: &str,
@@ -267,7 +270,7 @@ impl RunFlutter {
         info!("Remote command: {}\n", cmd);
 
         let output = remote.exec_remote_stream(&cmd)?;
-        self.process_remote_output(output, features)
+        self.process_remote_output(ctx, output, features)
     }
 
     fn spawn_flutter_command(&self, exec_dir: &PathBuf, root_dir: &str) -> ResultWithError<Child> {
@@ -294,11 +297,16 @@ impl RunFlutter {
         CommandUtils::with_env_source(root_dir, &format!("flutter drive {args}"))
     }
 
-    fn process_output(&self, mut child: Child, features: &[FeatureTest]) -> EmptyResult {
+    fn process_output(
+        &self,
+        ctx: &HookContext<'_, AppState>,
+        mut child: Child,
+        features: &[FeatureTest],
+    ) -> EmptyResult {
         let stdout = child.stdout.take().unwrap();
         let reader = BufReader::new(stdout);
 
-        let res = self.process_lines(reader.lines(), features);
+        let res = self.process_lines(ctx, reader.lines(), features);
         let output = child
             .wait_with_output()
             .auto_err("Failed to wait for child process when running flutter tests")?;
@@ -317,17 +325,20 @@ impl RunFlutter {
 
     fn process_remote_output<I: Iterator<Item = String>>(
         &self,
+        ctx: &HookContext<'_, AppState>,
         lines: I,
         features: &[FeatureTest],
     ) -> EmptyResult {
-        self.process_lines(lines.map(Ok), features)
+        self.process_lines(ctx, lines.map(Ok), features)
     }
 
     fn process_lines(
         &self,
+        ctx: &HookContext<'_, AppState>,
         lines: impl Iterator<Item = std::io::Result<String>>,
         features: &[FeatureTest],
     ) -> EmptyResult {
+        let start_time = chrono::Utc::now();
         let mut passed = 0;
         let mut failed = 0;
 
@@ -335,12 +346,14 @@ impl RunFlutter {
         let mut test_spinner: Option<indicatif::ProgressBar> = None;
 
         // track failure logs per test
+        let mut full_test_output = String::new();
         let mut current_test_output = String::new();
         let mut collecting_output = false;
 
         for line in lines {
             let mut line = line?;
             line = line.trim().to_string();
+            full_test_output.push_str(format!("{}\n", line).as_str());
 
             if line.is_empty()
                 || line.contains("Some tests failed")
@@ -378,27 +391,25 @@ impl RunFlutter {
                         ts.finish_and_clear();
                     }
 
-                    if curr_failed != failed {
+                    // Failed
+                    if curr_failed != failed
+                        && let Some(test_name) = current_test.as_ref()
+                    {
                         failed += 1;
-                        if let Some(test_name) = current_test.as_ref() {
-                            error!("❌ Failed: {}", test_name);
+                        self.handle_test_failed(
+                            ctx,
+                            test_name,
+                            self.find_feature_test_description(features, test_name),
+                            &current_test_output,
+                        )?;
+                    }
 
-                            if let Some(desc) =
-                                self.find_feature_test_description(features, test_name)
-                            {
-                                error!("Test Description: {}", desc);
-                            }
-                        }
-                        error!("Test output...");
-                        for line in current_test_output.lines() {
-                            error!("    {}", CommandUtils::unescape_ansi(line.to_owned()));
-                        }
-                        error!("End of test output\n");
-                    } else if curr_passed != passed {
+                    // Passed
+                    if curr_passed != passed
+                        && let Some(test_name) = current_test.as_ref()
+                    {
                         passed += 1;
-                        if let Some(test_name) = current_test.as_ref() {
-                            info!("✅ Succeeded: {}", test_name);
-                        }
+                        self.handle_test_passed(ctx, test_name)?;
                     }
 
                     if test_name.starts_with("(") {
@@ -428,17 +439,50 @@ impl RunFlutter {
             ts.finish_and_clear();
         }
 
+        let total = passed + failed;
+        ctx.set_results_total(total)?;
+
+        let end_time = chrono::Utc::now();
+        ctx.set_results_time(start_time, end_time)?;
+
+        ctx.set_results_full_log(full_test_output)?;
+
         println!();
         info!("🎉 All tests completed");
-        info!(
-            "✅ Passed: {passed}  ❌ Failed: {failed}  📋 Total: {}",
-            passed + failed
-        );
+        info!("✅ Passed: {passed}  ❌ Failed: {failed}  📋 Total: {total}");
 
         if failed > 0 {
             return Err("Some tests failed".into());
         }
 
+        Ok(())
+    }
+
+    fn handle_test_passed(&self, ctx: &HookContext<'_, AppState>, test_name: &str) -> EmptyResult {
+        info!("✅ Succeeded: {}", test_name);
+        ctx.increment_results_passed()?;
+        Ok(())
+    }
+
+    fn handle_test_failed(
+        &self,
+        ctx: &HookContext<'_, AppState>,
+        test_name: &str,
+        description: Option<String>,
+        current_test_output: &str,
+    ) -> EmptyResult {
+        info!("❌ Failed: {}", test_name);
+        if let Some(desc) = description {
+            error!("Test Description: {}", desc);
+        }
+
+        error!("Test output...");
+        for line in current_test_output.lines() {
+            error!("    {}", CommandUtils::unescape_ansi(line.to_owned()));
+        }
+        error!("End of test output\n");
+
+        ctx.increment_results_failed()?;
         Ok(())
     }
 

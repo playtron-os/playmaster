@@ -8,6 +8,7 @@ pub mod flutter;
 pub mod logger;
 pub mod os;
 pub mod semver;
+pub mod serializers;
 pub mod shlex;
 pub mod string;
 pub mod variables;

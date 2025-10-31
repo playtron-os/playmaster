@@ -4,6 +4,7 @@ use std::{
 };
 
 use serde::de::DeserializeOwned;
+use tracing::debug;
 
 use crate::{
     models::app_state::RemoteInfo,
@@ -50,6 +51,7 @@ impl DirUtils {
             return Err("feature_test directory not found".into());
         }
 
+        debug!("Searching for YAML files in {:?}", config_path);
         let res = Self::find_all_yaml(&config_path, yaml_type)?;
         Ok(res)
     }

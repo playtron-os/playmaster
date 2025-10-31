@@ -1,10 +1,11 @@
+use chrono::DateTime;
 use schemars::JsonSchema;
 use serde::Deserialize;
 use std::sync::{Arc, RwLock};
 
 use crate::{
     models::{
-        app_state::{AppState, RemoteInfo},
+        app_state::{AppState, RemoteInfo, Results},
         args::AppArgs,
         config::Config,
         vars::Vars,
@@ -72,6 +73,75 @@ impl<'a> HookContext<'a, AppState> {
     pub fn get_root_dir(&self) -> ResultWithError<String> {
         let state = self.read_state()?;
         Ok(state.root_dir.clone())
+    }
+
+    pub fn set_results_full_log(&self, log: String) -> EmptyResult {
+        let mut state = self
+            .state
+            .write()
+            .auto_err("Failed to acquire write lock")?;
+        state.results.full_log = log;
+        Ok(())
+    }
+
+    pub fn add_results_error(&self, error: String) -> EmptyResult {
+        let mut state = self
+            .state
+            .write()
+            .auto_err("Failed to acquire write lock")?;
+        state.results.error.push(error);
+        Ok(())
+    }
+
+    pub fn set_results_total(&self, total: i16) -> EmptyResult {
+        let mut state = self
+            .state
+            .write()
+            .auto_err("Failed to acquire write lock")?;
+        state.results.total = total;
+        Ok(())
+    }
+
+    pub fn increment_results_passed(&self) -> EmptyResult {
+        let mut state = self
+            .state
+            .write()
+            .auto_err("Failed to acquire write lock")?;
+        state.results.passed += 1;
+        Ok(())
+    }
+
+    pub fn increment_results_failed(&self) -> EmptyResult {
+        let mut state = self
+            .state
+            .write()
+            .auto_err("Failed to acquire write lock")?;
+        state.results.failed += 1;
+        Ok(())
+    }
+
+    pub fn set_results_time(
+        &self,
+        start: DateTime<chrono::Utc>,
+        end: DateTime<chrono::Utc>,
+    ) -> EmptyResult {
+        let mut state = self
+            .state
+            .write()
+            .auto_err("Failed to acquire write lock")?;
+        state.results.start_time = start;
+        state.results.end_time = end;
+        Ok(())
+    }
+
+    pub fn get_results(&self) -> ResultWithError<Results> {
+        let state = self.read_state()?;
+        Ok(state.results.clone())
+    }
+
+    pub fn get_remote_info(&self) -> ResultWithError<Option<RemoteInfo>> {
+        let state = self.read_state()?;
+        Ok(state.remote.clone())
     }
 }
 

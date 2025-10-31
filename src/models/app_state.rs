@@ -5,10 +5,13 @@ use std::{
     time::Duration,
 };
 
+use chrono::DateTime;
+use serde::Serialize;
 use ssh2::{PtyModes, Session};
 use terminal_size::{Height, Width, terminal_size};
 
 use crate::utils::errors::ResultWithError;
+use crate::utils::serializers::date_serializer;
 
 #[derive(Default, Debug)]
 pub struct CommandOutput {
@@ -26,6 +29,20 @@ pub struct AppState {
     // TODO: Implement ask for sudo password
     pub sudo_password: String,
     pub root_dir: String,
+    pub results: Results,
+}
+
+#[derive(Clone, Debug, Default, Serialize)]
+pub struct Results {
+    pub total: i16,
+    pub passed: i16,
+    pub failed: i16,
+    pub error: Vec<String>,
+    pub full_log: String,
+    #[serde(with = "date_serializer")]
+    pub start_time: DateTime<chrono::Utc>,
+    #[serde(with = "date_serializer")]
+    pub end_time: DateTime<chrono::Utc>,
 }
 
 #[derive(Clone, Debug, Default)]

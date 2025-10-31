@@ -2,6 +2,7 @@ use std::{collections::HashMap, fs};
 
 use schemars::JsonSchema;
 use serde::Deserialize;
+use tracing::debug;
 
 use crate::{
     hooks::iface::HookType,
@@ -28,16 +29,28 @@ pub struct Config {
     pub state_set: StateSet,
     #[serde(default)]
     pub hooks: Vec<HookConfig>,
+    #[serde(default)]
+    pub webhooks: Vec<WebhookConfig>,
 }
 
 impl Config {
     pub fn from_curr_dir() -> ResultWithError<Self> {
         let config_path = DirUtils::curr_dir()?.join("playmaster.yaml");
+        debug!("Loading config from {:?}", config_path);
+
         let content = fs::read_to_string(config_path).auto_err("Could not read config file")?;
+        debug!("Config loaded");
+
         let expanded = VariablesUtils::expand_env_vars(&content);
+        debug!("Config expanded");
+
         let mut config: Config =
             serde_yaml::from_str(&expanded).auto_err("Invalid config format")?;
+        debug!("Config deserialized");
+
         config.load_default_configs();
+        debug!("Config default values loaded");
+
         Ok(config)
     }
 
@@ -46,6 +59,32 @@ impl Config {
             self.add_flutter_defaults();
         }
     }
+}
+
+#[derive(Debug, Deserialize, PartialEq, Clone, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum WebhookType {
+    #[serde(alias = "Results", alias = "RESULTS")]
+    Results,
+}
+
+#[derive(Debug, Deserialize, Clone, JsonSchema)]
+pub struct WebhookConfig {
+    pub webhook_type: WebhookType,
+    pub url: String,
+    #[serde(default)]
+    pub message_template: String,
+    #[serde(default)]
+    pub ignore_error: bool,
+    #[serde(default)]
+    pub s3_config: Option<S3Config>,
+}
+
+#[derive(Debug, Deserialize, Clone, JsonSchema, Default)]
+pub struct S3Config {
+    #[serde(default)]
+    pub key_prefix: String,
+    pub bucket: String,
 }
 
 #[derive(Debug, Deserialize, Clone, JsonSchema, Default)]
