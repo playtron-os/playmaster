@@ -93,6 +93,17 @@
           "required": [
             "placeholder"
           ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ]
         }
       ]
     },

@@ -138,6 +138,7 @@ pub enum FindBy {
     Key { key: String },
     Text { text: String },
     Placeholder { placeholder: String },
+    Type { r#type: String },
 }
 
 #[derive(Debug, Deserialize, JsonSchema, Clone)]

@@ -277,6 +277,9 @@ impl Step {
                     ctx.vars.replace_var_usage(placeholder)
                 )
             }
+            feature_test::FindBy::Type { r#type } => {
+                format!("find.byType({})", ctx.vars.replace_var_usage(r#type))
+            }
         }
     }
 
