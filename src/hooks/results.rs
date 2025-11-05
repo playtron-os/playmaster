@@ -44,6 +44,11 @@ impl HookResults {
     }
 
     fn call_webhook(&self, results: Results) -> EmptyResult {
+        if self.config.url.is_empty() {
+            info!("No webhook URL configured, skipping webhook call.");
+            return Ok(());
+        }
+
         info!("Calling webhook {}...", self.config.url);
 
         let client = reqwest::blocking::Client::new();

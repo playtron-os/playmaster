@@ -229,11 +229,17 @@ impl Step {
                 Self::find_by(ctx, tap)
             ),
             Step::Type { r#type } => format!(
-                "      await tester.pumpAndSettle();\n      await tester.enterText({}, '{}');\n      await tester.pumpAndSettle();\n",
+                "      await tester.type({}, {});\n",
                 Self::find_by(ctx, &r#type.by),
                 ctx.vars.replace_var_usage(&r#type.value)
             ),
             Step::Match { r#match } => match &r#match.target {
+                feature_test::MatchTarget::Key { key } => {
+                    format!(
+                        "      expect(find.byKey(Key('{}')), findsOneWidget);\n",
+                        ctx.vars.replace_var_usage(key)
+                    )
+                }
                 feature_test::MatchTarget::Text { text } => {
                     format!(
                         "      expect(find.text('{}'), findsOneWidget);\n",

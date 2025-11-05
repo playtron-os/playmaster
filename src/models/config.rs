@@ -136,6 +136,8 @@ pub struct HookConfig {
     pub is_async: bool,
     #[serde(default)]
     pub continue_on_error: bool,
+    #[serde(default)]
+    pub r#if: Option<String>,
     pub command: String,
     #[serde(default)]
     pub env: Option<HashMap<String, String>>,

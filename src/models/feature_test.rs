@@ -156,6 +156,7 @@ pub struct Match {
 #[derive(Debug, Deserialize, JsonSchema, Clone)]
 #[serde(untagged)]
 pub enum MatchTarget {
+    Key { key: String },
     Text { text: String },
     Screenshot { screenshot: String },
 }

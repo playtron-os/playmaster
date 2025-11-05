@@ -113,6 +113,17 @@
         {
           "type": "object",
           "properties": {
+            "key": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "key"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
             "text": {
               "type": "string"
             }

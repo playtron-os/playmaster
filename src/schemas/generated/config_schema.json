@@ -89,6 +89,13 @@
         "hook_type": {
           "$ref": "#/$defs/HookType"
         },
+        "if": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "default": null
+        },
         "name": {
           "type": "string"
         }

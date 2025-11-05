@@ -32,6 +32,10 @@ void main() {
 
       //
       await tester.pumpAndSettle();
+      await tester.tap(
+        find.byPlaceholder('Email'),
+        kind: PointerDeviceKind.mouse,
+      );
       await tester.enterText(
         find.byPlaceholder('Email'),
         '${Common.validEmail}',
@@ -40,6 +44,10 @@ void main() {
 
       //
       await tester.pumpAndSettle();
+      await tester.tap(
+        find.byPlaceholder('Password'),
+        kind: PointerDeviceKind.mouse,
+      );
       await tester.enterText(
         find.byPlaceholder('Password'),
         '${validPassword}',
@@ -89,6 +97,10 @@ void main() {
 
       //
       await tester.pumpAndSettle();
+      await tester.tap(
+        find.byPlaceholder('Email'),
+        kind: PointerDeviceKind.mouse,
+      );
       await tester.enterText(
         find.byPlaceholder('Email'),
         '${Common.validEmail}',
@@ -97,6 +109,10 @@ void main() {
 
       //
       await tester.pumpAndSettle();
+      await tester.tap(
+        find.byPlaceholder('Password'),
+        kind: PointerDeviceKind.mouse,
+      );
       await tester.enterText(
         find.byPlaceholder('Password'),
         '${invalidPassword}',

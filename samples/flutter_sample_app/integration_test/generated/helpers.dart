@@ -240,6 +240,17 @@ flutter test integration_test --dart-define=UPDATE_SCREENSHOTS=true''');
     throw Exception('Timed out waiting for $finder to disappear');
   }
 
+  Future<void> type(
+    Finder finder,
+    String text, {
+    PointerDeviceKind kind = PointerDeviceKind.mouse,
+  }) async {
+    await pumpAndSettle();
+    await tap(finder, kind: kind);
+    await enterText(finder, text);
+    await pumpAndSettle();
+  }
+
   Future<Process> runCommandAsync(String command, String argument) async {
     try {
       final process = await Process.start(command, [

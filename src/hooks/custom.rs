@@ -2,7 +2,7 @@ use std::process::Stdio;
 use std::{env, thread};
 use std::{path::PathBuf, process::Command};
 
-use tracing::{error, info, trace};
+use tracing::{debug, error, info, trace};
 
 use crate::utils::errors::ResultWithError;
 use crate::utils::os::OsUtils;
@@ -230,14 +230,34 @@ impl Hook for HookCustom {
     }
 
     fn run(&self, ctx: &HookContext<'_, AppState>) -> EmptyResult {
-        info!("Executing custom hook: {}", self.config.name);
+        let remote = ctx.get_remote_info()?;
         let root_dir = ctx.get_root_dir()?;
 
-        if let Some(remote) = &ctx.state.read().unwrap().remote {
+        if let Some(condition) = &self.config.r#if {
+            let condition_result =
+                CommandUtils::run_command_str(condition, remote.as_ref(), &root_dir).auto_err(
+                    &format!("Error executing condition for hook: {}", self.config.name),
+                )?;
+            debug!(
+                "Evaluating condition for hook '{}': {} => {}",
+                self.config.name, condition, condition_result.stdout
+            );
+            if !condition_result.stdout.trim().eq_ignore_ascii_case("true") {
+                info!(
+                    "Skipping custom hook '{}' due to condition evaluating to false.",
+                    self.config.name
+                );
+                return Ok(());
+            }
+        }
+
+        info!("Executing custom hook: {}", self.config.name);
+
+        if let Some(remote) = remote {
             if self.config.is_async {
-                self.run_remote_async(remote, &root_dir)
+                self.run_remote_async(&remote, &root_dir)
             } else {
-                self.run_remote_sync(remote, &root_dir)
+                self.run_remote_sync(&remote, &root_dir)
             }
         } else if self.config.is_async {
             self.run_local_async(&root_dir)
