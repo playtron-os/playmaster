@@ -12,7 +12,7 @@ void main() {
   const invalidPassword = 'wrongpassword';
   const validPassword = 'password123';
 
-  group('First Time User Experience', () {
+  group('First Time User Experience -', () {
     testWidgets('Successful Login', (tester) async {
       await tester.initializeTest('');
 
@@ -31,28 +31,10 @@ void main() {
       await tester.pumpAndSettle();
 
       //
-      await tester.pumpAndSettle();
-      await tester.tap(
-        find.byPlaceholder('Email'),
-        kind: PointerDeviceKind.mouse,
-      );
-      await tester.enterText(
-        find.byPlaceholder('Email'),
-        '${Common.validEmail}',
-      );
-      await tester.pumpAndSettle();
+      await tester.type(find.byPlaceholder('Email'), '${Common.validEmail}');
 
       //
-      await tester.pumpAndSettle();
-      await tester.tap(
-        find.byPlaceholder('Password'),
-        kind: PointerDeviceKind.mouse,
-      );
-      await tester.enterText(
-        find.byPlaceholder('Password'),
-        '${validPassword}',
-      );
-      await tester.pumpAndSettle();
+      await tester.type(find.byPlaceholder('Password'), '${validPassword}');
 
       //
       await tester.pumpAndSettle();
@@ -96,28 +78,10 @@ void main() {
       await tester.pumpAndSettle();
 
       //
-      await tester.pumpAndSettle();
-      await tester.tap(
-        find.byPlaceholder('Email'),
-        kind: PointerDeviceKind.mouse,
-      );
-      await tester.enterText(
-        find.byPlaceholder('Email'),
-        '${Common.validEmail}',
-      );
-      await tester.pumpAndSettle();
+      await tester.type(find.byPlaceholder('Email'), '${Common.validEmail}');
 
       //
-      await tester.pumpAndSettle();
-      await tester.tap(
-        find.byPlaceholder('Password'),
-        kind: PointerDeviceKind.mouse,
-      );
-      await tester.enterText(
-        find.byPlaceholder('Password'),
-        '${invalidPassword}',
-      );
-      await tester.pumpAndSettle();
+      await tester.type(find.byPlaceholder('Password'), '${invalidPassword}');
 
       //
       await tester.pumpAndSettle();
