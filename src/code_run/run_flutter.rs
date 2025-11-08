@@ -389,7 +389,7 @@ impl RunFlutter {
                     continue;
                 }
 
-                if rest.contains('+') && rest.contains(':') {
+                if rest.starts_with('+') && rest.contains(':') {
                     // Example: "+0 -1: TestName"
                     // Extract counters and test name
                     let mut parts = rest.splitn(2, ':');

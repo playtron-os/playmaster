@@ -154,6 +154,7 @@ extension WidgetTesterExtensions on WidgetTester {
     Future<void> compareScreenshot(
     String folderName,
     String name, {
+    bool negate = false,
     bool update = false,
   }) async {
     // --- Paths ---
@@ -211,7 +212,11 @@ extension WidgetTesterExtensions on WidgetTester {
       }
 
       final totalPixels = oldImg.width * oldImg.height;
-      final diffRatio = diffPixels / totalPixels;
+      var diffRatio = diffPixels / totalPixels;
+
+      if (negate) {
+        diffRatio = 1.0 - diffRatio;
+      }
 
       // 0.5% threshold
       if (diffRatio > 0.005) {

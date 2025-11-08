@@ -63,6 +63,9 @@ pub enum Step {
     Match {
         r#match: Match,
     },
+    NotMatch {
+        r#not_match: Match,
+    },
     Scroll {
         scroll: ScrollTarget,
     },

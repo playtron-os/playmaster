@@ -277,6 +277,17 @@
         {
           "type": "object",
           "properties": {
+            "not_match": {
+              "$ref": "#/$defs/Match"
+            }
+          },
+          "required": [
+            "not_match"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
             "scroll": {
               "$ref": "#/$defs/ScrollTarget"
             }
@@ -305,6 +316,17 @@
           },
           "required": [
             "use_step"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "user_input": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "user_input"
           ]
         },
         {

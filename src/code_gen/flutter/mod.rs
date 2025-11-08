@@ -257,6 +257,27 @@ impl Step {
                     )
                 }
             },
+            Step::NotMatch { r#not_match } => match &r#not_match.target {
+                feature_test::MatchTarget::Key { key } => {
+                    format!(
+                        "      expect(find.byKey(Key('{}')), findsNothing);\n",
+                        ctx.vars.replace_var_usage(key)
+                    )
+                }
+                feature_test::MatchTarget::Text { text } => {
+                    format!(
+                        "      expect(find.text('{}'), findsNothing);\n",
+                        ctx.vars.replace_var_usage(text)
+                    )
+                }
+                feature_test::MatchTarget::Screenshot { screenshot } => {
+                    format!(
+                        "      await tester.compareScreenshot('{}', '{}', negate: true);\n",
+                        file_name,
+                        ctx.vars.replace_var_usage(screenshot)
+                    )
+                }
+            },
             Step::Scroll { scroll } => format!(
                 "      await tester.drag({}, const Offset({}, {}));\n",
                 Self::find_by(ctx, &scroll.by),
