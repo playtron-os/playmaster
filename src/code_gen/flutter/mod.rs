@@ -19,6 +19,7 @@ use crate::{
     },
 };
 
+mod dbus;
 mod entrypoint;
 mod helper;
 mod test_driver;
@@ -39,6 +40,7 @@ impl CodeGenTrait for GenFlutter {
 
     fn run(&self, ctx: &HookContext<'_, GenState>) -> EmptyResult {
         self.generate_helpers()?;
+        self.generate_dbus()?;
 
         {
             let features = &ctx.read_state()?.features;
@@ -85,6 +87,7 @@ impl FeatureTest {
         out.push_str("import 'package:flutter_test/flutter_test.dart';\n");
         out.push_str("import 'package:flutter/material.dart';\n");
         out.push_str("import 'package:integration_test/integration_test.dart';\n");
+        out.push_str("import 'dbus.dart';\n");
         out.push_str("import 'helpers.dart';\n");
         out.push_str("import 'vars.dart';\n\n");
         out.push_str("void main() {\n");

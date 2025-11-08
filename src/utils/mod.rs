@@ -1,4 +1,5 @@
 pub mod command;
+pub mod dbus;
 pub mod dir;
 pub mod downloader_def;
 pub mod errors;
