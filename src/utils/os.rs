@@ -1,6 +1,6 @@
 use std::{
     env, fs,
-    io::Write as _,
+    io::{self, Write as _},
     path::{Path, PathBuf},
     process::Command,
 };
@@ -162,5 +162,13 @@ impl OsUtils {
         Self::set_file_permissions(&path)?;
 
         Ok(path)
+    }
+
+    pub fn ask(prompt: &str) -> String {
+        print!("{}", prompt);
+        io::stdout().flush().unwrap();
+        let mut input = String::new();
+        io::stdin().read_line(&mut input).unwrap();
+        input.trim().to_string()
     }
 }

@@ -121,7 +121,7 @@ beforeEach(WidgetTester tester) async {{
             out.push_str("\n\n");
         }
 
-        out.push_str(&format!("  group('{}', () {{\n", self.name));
+        out.push_str(&format!("  group('{} -', () {{\n", self.name));
 
         // Test cases
         for test in &self.tests {
@@ -232,7 +232,7 @@ impl Step {
                 Self::find_by(ctx, tap)
             ),
             Step::Type { r#type } => format!(
-                "      await tester.type({}, {});\n",
+                "      await tester.type({}, '{}');\n",
                 Self::find_by(ctx, &r#type.by),
                 ctx.vars.replace_var_usage(&r#type.value)
             ),
@@ -269,6 +269,11 @@ impl Step {
                     to.x, to.y, remove,
                 ),
             },
+            Step::UserInput { user_input } => format!(
+                "      String {} = await tester.waitForInputViaDBus('{}');\n",
+                ctx.vars.replace_var_usage(user_input),
+                ctx.vars.replace_var_usage(user_input),
+            ),
         }
     }
 

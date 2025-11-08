@@ -1,17 +1,4 @@
-use std::fs;
-
-use tracing::info;
-
-use crate::{
-    code_gen::flutter::GenFlutter,
-    utils::{dbus::DbusUtils, errors::EmptyResult},
-};
-
-impl GenFlutter {
-    pub fn generate_dbus(&self) -> EmptyResult {
-        let file = self.out_dir.join("dbus.dart");
-
-        let content = r#"// GENERATED FILE - DO NOT EDIT
+// GENERATED FILE - DO NOT EDIT
 import 'dart:async';
 import 'dart:io';
 
@@ -21,10 +8,10 @@ import 'package:flutter_test/flutter_test.dart';
 class E2EDBusObject extends DBusObject {
   E2EDBusObject() : super(DBusObjectPath(PATH));
 
-  static const String PATH = '{DBUS_PATH}';
-  static const String INTERFACE = '{DBUS_INTERFACE}';
+  static const String PATH = '/one/playmaster/E2E';
+  static const String INTERFACE = 'one.playmaster.E2E';
 
-  static const String METHOD_CONTINUE = '{DBUS_METHOD_CONTINUE}';
+  static const String METHOD_CONTINUE = 'Continue';
 
   Completer<String> _completer = Completer();
 
@@ -60,9 +47,10 @@ class E2EDBusObject extends DBusObject {
   @override
   List<DBusIntrospectInterface> introspect() {
     return [
-      DBusIntrospectInterface(INTERFACE, methods: [
-        DBusIntrospectMethod(METHOD_CONTINUE),
-      ]),
+      DBusIntrospectInterface(
+        INTERFACE,
+        methods: [DBusIntrospectMethod(METHOD_CONTINUE)],
+      ),
     ];
   }
 }
@@ -79,7 +67,9 @@ extension WidgetTesterExtensions on WidgetTester {
     await bus.registerObject(obj);
 
     stdout
-      ..writeln('Waiting for DBus method call ${E2EDBusObject.INTERFACE}.${E2EDBusObject.METHOD_CONTINUE}($name) ...')
+      ..writeln(
+        'Waiting for DBus method call ${E2EDBusObject.INTERFACE}.${E2EDBusObject.METHOD_CONTINUE}($name) ...',
+      )
       ..writeln(
         'Example: busctl --user call ${E2EDBusObject.INTERFACE} ${E2EDBusObject.PATH} ${E2EDBusObject.INTERFACE} ${E2EDBusObject.METHOD_CONTINUE} s "your input here"',
       );
@@ -90,20 +80,4 @@ extension WidgetTesterExtensions on WidgetTester {
     await bus.close();
     return message;
   }
-}
-"#;
-
-        fs::write(
-            &file,
-            content
-                .replace("{DBUS_PATH}", DbusUtils::get_dbus_path())
-                .replace("{DBUS_INTERFACE}", DbusUtils::get_dbus_interface())
-                .replace(
-                    "{DBUS_METHOD_CONTINUE}",
-                    DbusUtils::get_dbus_method_continue(),
-                ),
-        )?;
-        info!("Generated dbus.dart");
-        Ok(())
-    }
 }

@@ -72,6 +72,9 @@ pub enum Step {
     Use {
         use_step: String,
     },
+    UserInput {
+        user_input: String,
+    },
     Simple(SimpleStep),
 }
 

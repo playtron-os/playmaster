@@ -1,4 +1,5 @@
 use std::{
+    collections::HashSet,
     fs,
     io::{BufRead as _, BufReader},
     path::{Path, PathBuf},
@@ -8,7 +9,7 @@ use std::{
 
 use serde_yaml::{Mapping, Value};
 use tempfile::NamedTempFile;
-use tracing::{error, info};
+use tracing::{debug, error, info};
 
 use crate::{
     code_run::run_iface::CodeRunTrait,
@@ -21,6 +22,7 @@ use crate::{
     utils::{
         self,
         command::CommandUtils,
+        dbus::DbusUtils,
         errors::{EmptyResult, ResultTrait, ResultWithError},
         flutter::FlutterUtils,
         os::OsUtils,
@@ -281,6 +283,7 @@ impl RunFlutter {
             .env("DISPLAY", OsUtils::get_display())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
+        info!("Spawning local command: {:?}\n", command);
 
         Ok(command.spawn()?)
     }
@@ -349,6 +352,7 @@ impl RunFlutter {
         let mut full_test_output = String::new();
         let mut current_test_output = String::new();
         let mut collecting_output = false;
+        let mut prev_test_names = HashSet::new();
 
         for line in lines {
             let mut line = line?;
@@ -360,6 +364,19 @@ impl RunFlutter {
                 || line.contains("All tests passed")
                 || line.contains("VMServiceFlutterDriver")
             {
+                continue;
+            }
+
+            if let Some(input_name) = DbusUtils::identify_continue_request(&line) {
+                let user_input = OsUtils::ask(&format!("User input requested for {}:", input_name));
+                debug!("User input: {}", user_input);
+                let dbus_cmd = DbusUtils::dbus_method_continue_cmd(&user_input);
+
+                let remote = ctx.get_remote_info()?;
+                let root_dir = ctx.get_root_dir()?;
+
+                CommandUtils::run_command_str(&dbus_cmd, remote.as_ref(), &root_dir)?;
+                debug!("Sent DBus continue command");
                 continue;
             }
 
@@ -378,6 +395,11 @@ impl RunFlutter {
                     let mut parts = rest.splitn(2, ':');
                     let counters = parts.next().unwrap_or_default().trim();
                     let test_name = parts.next().unwrap_or_default().trim();
+
+                    if prev_test_names.contains(test_name) {
+                        continue;
+                    }
+                    prev_test_names.insert(test_name.to_owned());
 
                     let counts: Vec<i16> = counters
                         .split_whitespace()
