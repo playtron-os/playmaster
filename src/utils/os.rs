@@ -6,12 +6,15 @@ use std::{
 };
 
 use rand::{Rng as _, distr::Alphanumeric};
+use std::sync::mpsc;
+use std::thread;
+use std::time::Duration;
 use tracing::{debug, trace};
 
 use crate::{
     hooks::iface::HookContext,
     models::app_state::{AppState, RemoteInfo},
-    utils::errors::{EmptyResult, ResultWithError},
+    utils::errors::{EmptyResult, ResultTrait, ResultWithError},
 };
 
 #[derive(Debug)]
@@ -164,11 +167,29 @@ impl OsUtils {
         Ok(path)
     }
 
-    pub fn ask(prompt: &str) -> String {
+    pub fn ask(prompt: &str) -> ResultWithError<String> {
         print!("{}", prompt);
-        io::stdout().flush().unwrap();
-        let mut input = String::new();
-        io::stdin().read_line(&mut input).unwrap();
-        input.trim().to_string()
+        io::stdout()
+            .flush()
+            .auto_err("Error flushing stdout during ask")?;
+
+        let (tx, rx) = mpsc::channel();
+
+        thread::spawn(move || {
+            let mut input = String::new();
+            if io::stdin().read_line(&mut input).is_ok() {
+                let _ = tx.send(input.trim().to_string());
+            }
+        });
+
+        let res = match rx.recv_timeout(Duration::from_secs(30)) {
+            Ok(input) => input,
+            Err(_) => {
+                println!("\nTimeout: no input received within 30 seconds");
+                String::new()
+            }
+        };
+
+        Ok(res)
     }
 }

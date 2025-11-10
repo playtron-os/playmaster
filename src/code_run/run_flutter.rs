@@ -5,6 +5,7 @@ use std::{
     path::{Path, PathBuf},
     process::{Child, Command, Stdio},
     str::FromStr,
+    time::Duration,
 };
 
 use serde_yaml::{Mapping, Value};
@@ -368,7 +369,17 @@ impl RunFlutter {
             }
 
             if let Some(input_name) = DbusUtils::identify_continue_request(&line) {
-                let user_input = OsUtils::ask(&format!("User input requested for {}:", input_name));
+                if let Some(spinner) = test_spinner.as_ref() {
+                    spinner.disable_steady_tick();
+                }
+
+                let user_input = OsUtils::ask(&format!("User input requested for {}:", input_name))
+                    .map_err(|err| {
+                        error!("Error during prompting for user input, err:{err:?}");
+                        err
+                    })
+                    .unwrap_or_default();
+
                 debug!("User input: {}", user_input);
                 let dbus_cmd = DbusUtils::dbus_method_continue_cmd(&user_input);
 
@@ -377,6 +388,11 @@ impl RunFlutter {
 
                 CommandUtils::run_command_str(&dbus_cmd, remote.as_ref(), &root_dir)?;
                 debug!("Sent DBus continue command");
+
+                if let Some(spinner) = test_spinner.as_ref() {
+                    spinner.enable_steady_tick(Duration::from_millis(80));
+                }
+
                 continue;
             }
 
