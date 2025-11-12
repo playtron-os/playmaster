@@ -8,7 +8,7 @@ use tracing::debug;
 
 use crate::{
     models::app_state::RemoteInfo,
-    utils::errors::{ResultTrait, ResultWithError},
+    utils::errors::{OptionResultTrait, ResultTrait, ResultWithError},
 };
 
 pub enum YamlType {
@@ -39,6 +39,14 @@ impl DirUtils {
         };
 
         Ok(home?.join("playmaster"))
+    }
+
+    pub fn config_dir() -> ResultWithError<std::path::PathBuf> {
+        let home_dir = Self::root_dir(None)?;
+        Ok(home_dir
+            .parent()
+            .auto_err("Cannot get parent of home dir")?
+            .join(".local/share/playmaster"))
     }
 
     pub fn parse_all_from_curr_dir<T>(yaml_type: YamlType) -> ResultWithError<Vec<YamlResult<T>>>

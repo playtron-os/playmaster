@@ -37,6 +37,11 @@ gen:
 	@echo "🧩 Running code generation..."
 	cd ./samples/flutter_sample_app && cargo run -- gen
 
+# ----- Run Gmail Code Refresh -----
+gmail:
+	@echo "🚀 Running $(BIN_NAME)..."
+	cargo run -- gmail
+
 # ----- Run CLI -----
 test:
 	@echo "🚀 Running $(BIN_NAME)..."

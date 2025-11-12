@@ -5,11 +5,13 @@ use signal_hook::{
 };
 use std::sync::mpsc;
 use std::thread;
+use tokio::runtime::Runtime;
 use tracing::{debug, error, info, warn};
 
 use crate::{
     code_gen::r#gen::CodeGen,
     code_run::run::CodeRun,
+    gmail::client::GmailClient,
     models::{args::AppArgs, config::Config, vars::Vars},
     schemas::schema_gen::SchemaGen,
     utils::{
@@ -22,6 +24,7 @@ use crate::{
 
 mod code_gen;
 mod code_run;
+mod gmail;
 mod hooks;
 #[cfg(target_os = "linux")]
 mod linux;
@@ -71,6 +74,14 @@ fn main() -> EmptyResult {
             models::args::Command::Schema => {
                 let schema_gen = SchemaGen::new();
                 schema_gen.execute()
+            }
+            models::args::Command::Gmail => {
+                let rt = Runtime::new().auto_err("Failed to create runtime")?;
+
+                rt.block_on(async {
+                    let gmail_client = GmailClient::new();
+                    gmail_client.generate_refresh_token().await
+                })
             }
         };
 

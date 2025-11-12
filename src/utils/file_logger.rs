@@ -4,6 +4,7 @@ use std::path::PathBuf;
 
 use tracing::error;
 
+use crate::utils::dir::DirUtils;
 use crate::utils::errors::EmptyResult;
 
 pub struct FileLogger {
@@ -12,8 +13,8 @@ pub struct FileLogger {
 
 impl FileLogger {
     pub fn new(file_name: &str) -> Self {
-        let mut log_dir = dirs::home_dir().unwrap_or_else(|| PathBuf::from("."));
-        log_dir.push(".local/share/playmaster/logs");
+        let mut log_dir = DirUtils::config_dir().unwrap_or(PathBuf::from("./"));
+        log_dir.push("logs");
 
         if let Err(err) = create_dir_all(&log_dir) {
             error!("Failed to create log directory: {}", err);

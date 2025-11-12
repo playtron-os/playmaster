@@ -36,6 +36,9 @@ pub enum Command {
         #[arg(short = 'a', long)]
         remote_addr: Option<String>,
     },
+
+    /// Generates a gmail refresh token for capturing MFA code automatically via Gmail API
+    Gmail,
 }
 
 #[derive(Parser, Debug, Clone)]
