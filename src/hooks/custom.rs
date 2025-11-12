@@ -77,7 +77,7 @@ impl HookCustom {
         command
             .arg("-c")
             .arg(&CommandUtils::with_env_source(root_dir, &cmd.command)?);
-        trace!(
+        debug!(
             "[{}] Running sync command: {:?}",
             self.config.name, &command
         );
@@ -94,6 +94,7 @@ impl HookCustom {
 
         if !stdout.is_empty() {
             stdout_logger.log(&stdout);
+            info!("[{}] Stdout: {}", self.config.name, stdout);
         }
         if !stderr.is_empty() {
             stderr_logger.log(&stderr);

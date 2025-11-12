@@ -71,6 +71,7 @@ impl CommandUtils {
             .auto_err("Failed to lock RUNNING_CMDS")?;
 
         for mut cmd in vec.drain(..) {
+            println!("Terminating local command: {}", cmd.name);
             let _ = cmd.child.kill();
             let output = cmd.child.wait_with_output();
 
