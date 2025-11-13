@@ -31,10 +31,14 @@ pub struct Config {
     pub hooks: Vec<HookConfig>,
     #[serde(default)]
     pub webhooks: Vec<WebhookConfig>,
+    #[serde(default)]
+    pub gmail: GmailConfig,
 }
 
 impl Config {
     pub fn from_curr_dir() -> ResultWithError<Self> {
+        debug!("Loading configuration from current directory...");
+
         let config_path = DirUtils::curr_dir()?.join("playmaster.yaml");
         debug!("Loading config from {:?}", config_path);
 
@@ -141,4 +145,15 @@ pub struct HookConfig {
     pub command: String,
     #[serde(default)]
     pub env: Option<HashMap<String, String>>,
+}
+
+#[derive(Debug, Default, Deserialize, Clone, JsonSchema)]
+pub struct GmailConfig {
+    pub enabled: bool,
+    pub credentials: GmailCredentialsConfig,
+}
+
+#[derive(Debug, Default, Deserialize, Clone, JsonSchema)]
+pub struct GmailCredentialsConfig {
+    pub s3: Option<S3Config>,
 }

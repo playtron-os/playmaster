@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 use aws_config::BehaviorVersion;
 use aws_sdk_s3::{primitives::ByteStream, types::ObjectCannedAcl};
-use tokio::runtime::Runtime;
 use tracing::{debug, error, info};
 
 use crate::{
@@ -161,11 +160,10 @@ impl HookResults {
             return Ok("".to_owned());
         }
 
-        let rt = Runtime::new().auto_err("Failed to create runtime")?;
         let key_prefix = s3_config.key_prefix.clone();
         let bucket = s3_config.bucket.clone();
 
-        rt.block_on(async {
+        tokio::runtime::Handle::current().block_on(async {
             let config = aws_config::load_defaults(BehaviorVersion::latest()).await;
             let s3 = aws_sdk_s3::Client::new(&config);
 

@@ -5,7 +5,6 @@ use signal_hook::{
 };
 use std::sync::mpsc;
 use std::thread;
-use tokio::runtime::Runtime;
 use tracing::{debug, error, info, warn};
 
 use crate::{
@@ -32,7 +31,8 @@ mod models;
 mod schemas;
 mod utils;
 
-fn main() -> EmptyResult {
+#[tokio::main]
+async fn main() -> EmptyResult {
     let mut signals = Signals::new([SIGINT, SIGTERM]).auto_err("Failed to init signal handler")?;
     let args = AppArgs::parse();
 
@@ -52,38 +52,13 @@ fn main() -> EmptyResult {
 
     // 🧩 Spawn your worker thread
     let tx_worker = tx.clone();
-    thread::spawn(move || {
+    tokio::spawn(async move {
         debug!(
             "Worker thread started with args: {:?}, command: {:?}",
             args, args.command
         );
 
-        let result = match args.command {
-            models::args::Command::Run { .. } => {
-                let config = Config::from_curr_dir()?;
-                let vars = Vars::all_from_curr_dir()?;
-                let run = CodeRun::new(args, config, vars);
-                run.execute()
-            }
-            models::args::Command::Gen => {
-                let config = Config::from_curr_dir()?;
-                let vars = Vars::all_from_curr_dir()?;
-                let code_gen = CodeGen::new(args, config, vars);
-                code_gen.execute()
-            }
-            models::args::Command::Schema => {
-                let schema_gen = SchemaGen::new();
-                schema_gen.execute()
-            }
-            models::args::Command::Gmail => {
-                let rt = Runtime::new().auto_err("Failed to create runtime")?;
-
-                rt.block_on(async {
-                    let gmail_client = GmailClient::new();
-                    gmail_client.generate_refresh_token().await
-                })
-            }
-        };
+        let result = process_command(args).await;
 
         match result {
             Ok(_) => {
@@ -136,4 +111,38 @@ fn main() -> EmptyResult {
     }
 
     Ok(())
+}
+
+async fn process_command(args: AppArgs) -> EmptyResult {
+    match args.command {
+        models::args::Command::Run { .. } => {
+            let config = Config::from_curr_dir()?;
+            let vars = Vars::all_from_curr_dir()?;
+            let run = CodeRun::new(args, config, vars);
+            run.execute()
+        }
+        models::args::Command::Gen => {
+            let config = Config::from_curr_dir()?;
+            let vars = Vars::all_from_curr_dir()?;
+            let code_gen = CodeGen::new(args, config, vars);
+            code_gen.execute()
+        }
+        models::args::Command::Schema => {
+            let schema_gen = SchemaGen::new();
+            schema_gen.execute()
+        }
+        models::args::Command::Gmail => {
+            let config = Config::from_curr_dir()?;
+
+            let gmail_client = if config.gmail.enabled
+                && let Some(creds) = config.gmail.credentials.s3
+            {
+                GmailClient::new(Some(creds.bucket), Some(creds.key_prefix))
+            } else {
+                GmailClient::new(None, None)
+            };
+
+            gmail_client.generate_refresh_token().await
+        }
+    }
 }
