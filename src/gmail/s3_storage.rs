@@ -69,7 +69,10 @@ impl TokenStorage for S3TokenStorage {
                 let token: TokenInfo = serde_json::from_slice(&bytes).ok()?;
                 Some(token)
             }
-            Err(_) => None, // No token in S3 yet
+            Err(e) => {
+                error!("Error getting credentials from S3: {}", e);
+                None
+            }
         }
     }
 }
