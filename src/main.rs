@@ -1,4 +1,5 @@
 use clap::Parser as _;
+use rustls::crypto::aws_lc_rs;
 use signal_hook::{
     consts::{SIGINT, SIGTERM},
     iterator::Signals,
@@ -43,6 +44,10 @@ async fn main() -> EmptyResult {
     }
 
     LoggerUtils::init();
+
+    aws_lc_rs::default_provider()
+        .install_default()
+        .expect("failed to install AWS-LC crypto provider");
 
     let version = env!("CARGO_PKG_VERSION");
     info!("🔧 PlayMaster, Version: {version}");

@@ -290,7 +290,10 @@ impl Step {
                     to.x, to.y, remove,
                 ),
             },
-            Step::UserInput { user_input } => format!(
+            Step::UserInput {
+                user_input,
+                gmail: _,
+            } => format!(
                 "      String {} = await tester.waitForInputViaDBus('{}');\n",
                 ctx.vars.replace_var_usage(user_input),
                 ctx.vars.replace_var_usage(user_input),

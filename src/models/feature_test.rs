@@ -77,6 +77,8 @@ pub enum Step {
     },
     UserInput {
         user_input: String,
+        #[serde(default)]
+        gmail: Option<UserInputGmail>,
     },
     Simple(SimpleStep),
 }
@@ -172,4 +174,17 @@ impl FeatureTest {
         let res = DirUtils::parse_all_from_curr_dir::<Self>(YamlType::FeatureTest)?;
         Ok(res.into_iter().map(|f| f.content).collect::<Vec<_>>())
     }
+}
+
+#[derive(Debug, Deserialize, JsonSchema, Clone)]
+pub struct UserInputGmail {
+    pub from: String,
+    pub subject_contains: String,
+    pub regex: UserInputGmailRegexType,
+}
+
+#[derive(Debug, Deserialize, JsonSchema, Clone)]
+pub enum UserInputGmailRegexType {
+    Custom { pattern: String },
+    Mfa,
 }

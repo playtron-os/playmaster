@@ -8,17 +8,21 @@ use std::{
     time::Duration,
 };
 
+use indicatif::ProgressBar;
+use regex::Regex;
+use scopeguard::defer;
 use serde_yaml::{Mapping, Value};
 use tempfile::NamedTempFile;
 use tracing::{debug, error, info};
 
 use crate::{
     code_run::run_iface::CodeRunTrait,
+    gmail::client::GmailClient,
     hooks::iface::HookContext,
     models::{
         app_state::{AppState, RemoteInfo},
         config::ProjectType,
-        feature_test::FeatureTest,
+        feature_test::{FeatureTest, UserInputGmail},
     },
     utils::{
         self,
@@ -368,31 +372,21 @@ impl RunFlutter {
                 continue;
             }
 
-            if let Some(input_name) = DbusUtils::identify_continue_request(&line) {
-                if let Some(spinner) = test_spinner.as_ref() {
-                    spinner.disable_steady_tick();
+            if let Some(input_name) = DbusUtils::identify_continue_request(&line)
+                && let Some(curr_test) = current_test.as_ref()
+            {
+                if let Err(err) = self.process_user_input(
+                    ctx,
+                    features,
+                    curr_test,
+                    &input_name,
+                    &mut test_spinner,
+                ) {
+                    error!(
+                        "Error processing user input for test '{}', input '{}', err:{:?}",
+                        curr_test, input_name, err
+                    );
                 }
-
-                let user_input = OsUtils::ask(&format!("User input requested for {}:", input_name))
-                    .map_err(|err| {
-                        error!("Error during prompting for user input, err:{err:?}");
-                        err
-                    })
-                    .unwrap_or_default();
-
-                debug!("User input: {}", user_input);
-                let dbus_cmd = DbusUtils::dbus_method_continue_cmd(&user_input);
-
-                let remote = ctx.get_remote_info()?;
-                let root_dir = ctx.get_root_dir()?;
-
-                CommandUtils::run_command_str(&dbus_cmd, remote.as_ref(), &root_dir)?;
-                debug!("Sent DBus continue command");
-
-                if let Some(spinner) = test_spinner.as_ref() {
-                    spinner.enable_steady_tick(Duration::from_millis(80));
-                }
-
                 continue;
             }
 
@@ -496,6 +490,97 @@ impl RunFlutter {
         Ok(())
     }
 
+    fn process_user_input(
+        &self,
+        ctx: &HookContext<'_, AppState>,
+        features: &[FeatureTest],
+        curr_test: &str,
+        input_name: &str,
+        test_spinner: &mut Option<ProgressBar>,
+    ) -> EmptyResult {
+        defer! {
+            if let Some(spinner) = test_spinner.as_ref() {
+                spinner.enable_steady_tick(Duration::from_millis(80));
+            }
+        }
+
+        let user_input = if let Some(gmail_client) = self.get_gmail_client(ctx)
+            && let Some(gmail_config) =
+                self.find_feature_test_gmail_config(features, curr_test, input_name)
+        {
+            info!("Fetching user input via Gmail for input: {}", input_name);
+
+            let email_from = &gmail_config.from;
+            let email_subject_contains = &gmail_config.subject_contains;
+
+            let regex_pattern = match &gmail_config.regex {
+                crate::models::feature_test::UserInputGmailRegexType::Custom { pattern } => {
+                    pattern.clone()
+                }
+                crate::models::feature_test::UserInputGmailRegexType::Mfa => {
+                    r"\b(\d{6})\b".to_string()
+                }
+            };
+
+            let re = Regex::new(&regex_pattern).auto_err("Error compiling user input regex")?;
+
+            tokio::runtime::Handle::current()
+                .block_on(async {
+                    gmail_client
+                        .fetch_latest_email_matching_regex(email_from, email_subject_contains, &re)
+                        .await
+                })
+                .map_err(|err| {
+                    error!("Error fetching user input from Gmail, err:{err:?}");
+                    err
+                })
+                .unwrap_or_default()
+        } else {
+            OsUtils::ask(&format!("User input requested for {}:", input_name))
+                .map_err(|err| {
+                    error!("Error during prompting for user input, err:{err:?}");
+                    err
+                })
+                .unwrap_or_default()
+        };
+
+        if let Some(spinner) = test_spinner.as_ref() {
+            spinner.disable_steady_tick();
+        }
+
+        debug!("User input: {}", user_input);
+        let dbus_cmd = DbusUtils::dbus_method_continue_cmd(&user_input);
+
+        let remote = ctx.get_remote_info()?;
+        let root_dir = ctx.get_root_dir()?;
+
+        CommandUtils::run_command_str(&dbus_cmd, remote.as_ref(), &root_dir)?;
+        debug!("Sent DBus continue command");
+
+        Ok(())
+    }
+
+    fn get_gmail_client(&self, ctx: &HookContext<'_, AppState>) -> Option<GmailClient> {
+        if !ctx.config.gmail.enabled {
+            return None;
+        }
+
+        Some(GmailClient::new(
+            ctx.config
+                .gmail
+                .credentials
+                .s3
+                .as_ref()
+                .map(|s| s.bucket.clone()),
+            ctx.config
+                .gmail
+                .credentials
+                .s3
+                .as_ref()
+                .map(|s| s.key_prefix.clone()),
+        ))
+    }
+
     fn handle_test_passed(&self, ctx: &HookContext<'_, AppState>, test_name: &str) -> EmptyResult {
         info!("✅ Succeeded: {}", test_name);
         ctx.increment_results_passed()?;
@@ -539,5 +624,40 @@ impl RunFlutter {
                 }
             })
         })
+    }
+
+    fn find_feature_test_gmail_config(
+        &self,
+        features: &[FeatureTest],
+        full_test_name: &str,
+        user_input_name: &str,
+    ) -> Option<UserInputGmail> {
+        features
+            .iter()
+            .find_map(|f| {
+                f.tests.iter().find_map(|t| {
+                    let joined = format!("{} {}", f.name, t.name);
+                    if full_test_name == joined {
+                        t.steps.iter().find_map(|s| {
+                            if let crate::models::feature_test::Step::UserInput {
+                                user_input,
+                                gmail,
+                            } = s
+                            {
+                                if user_input == user_input_name {
+                                    Some(gmail.clone())
+                                } else {
+                                    None
+                                }
+                            } else {
+                                None
+                            }
+                        })
+                    } else {
+                        None
+                    }
+                })
+            })
+            .flatten()
     }
 }
