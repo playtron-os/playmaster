@@ -28,6 +28,7 @@ impl Installer for PackageInstaller {
             &state.root_dir,
         )?;
         self.add_alias_post_install(package, state.os_info.is_ostree, remote, &state.root_dir)?;
+        self.add_local_bin_to_bashrc_path(state.os_info.is_ostree, remote, &state.root_dir)?;
         Ok(())
     }
 }
@@ -91,6 +92,34 @@ impl PackageInstaller {
         }
 
         info!("✅ {} export of '{}' succeeded", conn_type, cmd);
+        Ok(())
+    }
+
+    fn add_local_bin_to_bashrc_path(
+        &self,
+        is_ostree: bool,
+        remote: Option<&RemoteInfo>,
+        root_dir: &str,
+    ) -> EmptyResult {
+        if !is_ostree {
+            return Ok(());
+        }
+
+        let full_cmd = "grep -qxF 'export PATH=\"$HOME/.local/bin:$PATH\"' ~/.bashrc || \
+                        echo 'export PATH=\"$HOME/.local/bin:$PATH\"' >> ~/.bashrc";
+
+        let conn_type = if remote.is_some() { "remote" } else { "local" };
+        let result = CommandUtils::run_command_str(full_cmd, remote, root_dir)?;
+
+        if result.status != 0 {
+            error!(
+                "❌ {} adding ~/.local/bin to PATH failed: {}",
+                conn_type, result.stderr
+            );
+            return Err(format!("{} adding ~/.local/bin to PATH failed", conn_type).into());
+        }
+
+        info!("✅ {} added ~/.local/bin to PATH", conn_type);
         Ok(())
     }
 
