@@ -245,7 +245,7 @@
           "type": "object",
           "properties": {
             "tap": {
-              "$ref": "#/$defs/FindBy"
+              "$ref": "#/$defs/TapFindBy"
             }
           },
           "required": [
@@ -331,6 +331,71 @@
         },
         {
           "$ref": "#/$defs/SimpleStep"
+        }
+      ]
+    },
+    "TapFindBy": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "key": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "key"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "text": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "text"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "placeholder": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "placeholder"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "x": {
+              "type": "integer",
+              "format": "int32"
+            },
+            "y": {
+              "type": "integer",
+              "format": "int32"
+            }
+          },
+          "required": [
+            "x",
+            "y"
+          ]
         }
       ]
     },

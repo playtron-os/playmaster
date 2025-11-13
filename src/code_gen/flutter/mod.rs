@@ -227,10 +227,16 @@ impl Step {
                     ),
                 },
             },
-            Step::Tap { tap } => format!(
-                "      await tester.pumpAndSettle();\n      await tester.tap({}, kind: PointerDeviceKind.mouse);\n      await tester.pumpAndSettle();\n",
-                Self::find_by(ctx, tap)
-            ),
+            Step::Tap { tap } => match tap {
+                feature_test::TapFindBy::Coords { x, y } => format!(
+                    "      await tester.pumpAndSettle();      await tester.tapAt(Offset({}, {}));\n",
+                    x, y
+                ),
+                _ => format!(
+                    "      await tester.pumpAndSettle();\n      await tester.tap({}, kind: PointerDeviceKind.mouse);\n      await tester.pumpAndSettle();\n",
+                    Self::find_by(ctx, &tap.to_find_by().expect("Should convert to find_by"))
+                ),
+            },
             Step::Type { r#type } => format!(
                 "      await tester.type({}, '{}');\n",
                 Self::find_by(ctx, &r#type.by),

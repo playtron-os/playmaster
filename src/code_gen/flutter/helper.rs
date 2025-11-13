@@ -258,6 +258,13 @@ flutter test integration_test --dart-define=UPDATE_SCREENSHOTS=true''',
     await pumpAndSettle();
   }
 
+  Future<void> tapAt(Offset offset) async {
+    final gesture = await startGesture(offset);
+    await gesture.up();
+    await pump();
+    await pumpAndSettle();
+  }
+
   Future<void> waitUntilGone(Finder finder, {Duration timeout = const Duration(seconds: 10)}) async {
     final end = DateTime.now().add(timeout);
 

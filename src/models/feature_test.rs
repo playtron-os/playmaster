@@ -55,7 +55,7 @@ pub enum Step {
         timeout_millis: Option<u32>,
     },
     Tap {
-        tap: FindBy,
+        tap: TapFindBy,
     },
     Type {
         r#type: TypeAction,
@@ -143,6 +143,32 @@ pub enum PointerAction {
 pub struct Offset {
     pub x: i32,
     pub y: i32,
+}
+
+#[derive(Debug, Deserialize, JsonSchema, Clone)]
+#[serde(untagged)]
+pub enum TapFindBy {
+    Key { key: String },
+    Text { text: String },
+    Placeholder { placeholder: String },
+    Type { r#type: String },
+    Coords { x: i32, y: i32 },
+}
+
+impl TapFindBy {
+    pub fn to_find_by(&self) -> Option<FindBy> {
+        match self {
+            TapFindBy::Key { key } => Some(FindBy::Key { key: key.clone() }),
+            TapFindBy::Text { text } => Some(FindBy::Text { text: text.clone() }),
+            TapFindBy::Placeholder { placeholder } => Some(FindBy::Placeholder {
+                placeholder: placeholder.clone(),
+            }),
+            TapFindBy::Type { r#type } => Some(FindBy::Type {
+                r#type: r#type.clone(),
+            }),
+            TapFindBy::Coords { .. } => None,
+        }
+    }
 }
 
 #[derive(Debug, Deserialize, JsonSchema, Clone)]
