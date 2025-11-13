@@ -353,7 +353,7 @@ impl RunFlutter {
         features: &[FeatureTest],
     ) -> EmptyResult {
         let start_time = chrono::Utc::now();
-        let start_timestamp = start_time.timestamp();
+        let mut curr_test_start_timestamp = start_time.timestamp();
         let mut passed = 0;
         let mut failed = 0;
 
@@ -389,7 +389,7 @@ impl RunFlutter {
                         curr_test,
                         &input_name,
                         &mut test_spinner,
-                        start_timestamp,
+                        curr_test_start_timestamp,
                     )
                     .await
                 {
@@ -461,6 +461,7 @@ impl RunFlutter {
                         continue;
                     }
 
+                    curr_test_start_timestamp = chrono::Utc::now().timestamp();
                     current_test = Some(test_name.to_string());
                     test_spinner = Some(utils::command::CommandUtils::display_loader(format!(
                         "Running: {}",
