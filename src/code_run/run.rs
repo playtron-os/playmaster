@@ -84,7 +84,7 @@ impl CodeRun {
         Ok(())
     }
 
-    pub fn execute(&self) -> EmptyResult {
+    pub async fn execute(&self) -> EmptyResult {
         let ctx = HookContext {
             args: &self.args,
             config: &self.config,
@@ -131,7 +131,7 @@ impl CodeRun {
         }
 
         let res = if !has_error && ExecutionUtils::is_running() {
-            self.run_tests(&ctx, features)
+            self.run_tests(&ctx, features).await
         } else {
             Err("Pre-hook failed".into())
         };
@@ -161,7 +161,7 @@ impl CodeRun {
         res
     }
 
-    fn run_tests(
+    async fn run_tests(
         &self,
         ctx: &HookContext<'_, AppState>,
         features: Vec<FeatureTest>,
@@ -184,6 +184,6 @@ impl CodeRun {
                 .as_str(),
             )?;
 
-        runner.run(ctx, &features)
+        runner.run(ctx, &features).await
     }
 }

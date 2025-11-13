@@ -2,7 +2,7 @@ use std::path::PathBuf;
 
 use google_gmail1::{
     Gmail,
-    api::{ListMessagesResponse, Message},
+    api::Message,
     hyper_rustls::{HttpsConnector, HttpsConnectorBuilder},
     hyper_util::{
         client::legacy::{Client, connect::HttpConnector},
@@ -42,12 +42,14 @@ impl GmailClient {
         from: &str,
         subject_contains: &str,
         regex: &Regex,
+        after_timestamp: Option<i64>,
+        timeout_secs: u64,
+        poll_interval_secs: u64,
     ) -> ResultWithError<String> {
-        // Auth
+        //  Auth
         let secret = self.get_secret().await?;
         let auth = self.get_flow(secret).await?;
 
-        // Gmail API client
         let executor = TokioExecutor::new();
         let https = HttpsConnectorBuilder::new()
             .with_native_roots()?
@@ -55,45 +57,23 @@ impl GmailClient {
             .enable_http1()
             .build();
         let client = Client::builder(executor).build(https);
+
         let hub = Gmail::new(client, auth);
-
         let user_id = "me";
-        let q = format!("from:{} subject:{}", from, subject_contains);
 
-        // List matching messages
-        let resp: ListMessagesResponse = hub
-            .users()
-            .messages_list(user_id)
-            .q(&q)
-            .max_results(1)
-            .doit()
-            .await?
-            .1; // second item is the response
+        // Build query
+        let q = self.build_query(from, subject_contains, after_timestamp);
 
-        let Some(messages) = resp.messages else {
-            return Err("No matching MFA emails found".into());
-        };
+        // Poll for a message
+        let msg_id = self
+            .search_latest_message(&hub, user_id, &q, timeout_secs, poll_interval_secs)
+            .await?;
 
-        let latest_msg_id = messages[0].id.clone().unwrap();
+        // Fetch body
+        let body = self.get_email_body(&hub, user_id, &msg_id).await?;
 
-        // Fetch the full email, including payload
-        let full_msg: Message = hub
-            .users()
-            .messages_get(user_id, &latest_msg_id)
-            .format("full")
-            .doit()
-            .await?
-            .1;
-
-        // Extract plain text from message payload
-        let body = self.extract_body_from_message(&full_msg)?;
-
-        // Extract text from body using regex
-        if let Some(caps) = regex.captures(&body) {
-            return Ok(caps[1].to_string());
-        }
-
-        Err("Could not find text in email body".into())
+        // Extract via regex
+        self.extract_code_from_body(&body, regex)
     }
 
     pub async fn generate_refresh_token(&self) -> EmptyResult {
@@ -108,6 +88,83 @@ impl GmailClient {
         info!("ACCESS TOKEN: {:?}", token);
 
         Ok(())
+    }
+
+    fn build_query(
+        &self,
+        from: &str,
+        subject_contains: &str,
+        after_timestamp: Option<i64>,
+    ) -> String {
+        let mut q = format!("from:{} subject:{}", from, subject_contains);
+
+        if let Some(ts) = after_timestamp {
+            q.push_str(&format!(" after:{}", ts));
+        }
+
+        q
+    }
+
+    async fn search_latest_message(
+        &self,
+        hub: &Gmail<HttpsConnector<HttpConnector>>,
+        user_id: &str,
+        q: &str,
+        timeout_secs: u64,
+        poll_interval_secs: u64,
+    ) -> ResultWithError<String> {
+        let start = tokio::time::Instant::now();
+
+        loop {
+            if start.elapsed().as_secs() >= timeout_secs {
+                return Err(format!("Timed out after {} seconds", timeout_secs).into());
+            }
+
+            info!("Searching for email with query: {}", q);
+
+            let resp = hub
+                .users()
+                .messages_list(user_id)
+                .q(q)
+                .max_results(1)
+                .doit()
+                .await?
+                .1;
+
+            if let Some(messages) = resp.messages
+                && let Some(msg) = messages.first()
+                && let Some(id) = &msg.id
+            {
+                return Ok(id.clone());
+            }
+
+            tokio::time::sleep(std::time::Duration::from_secs(poll_interval_secs)).await;
+        }
+    }
+
+    async fn get_email_body(
+        &self,
+        hub: &Gmail<HttpsConnector<HttpConnector>>,
+        user_id: &str,
+        msg_id: &str,
+    ) -> ResultWithError<String> {
+        let msg: Message = hub
+            .users()
+            .messages_get(user_id, msg_id)
+            .format("full")
+            .doit()
+            .await?
+            .1;
+
+        self.extract_body_from_message(&msg)
+    }
+
+    fn extract_code_from_body(&self, body: &str, regex: &Regex) -> ResultWithError<String> {
+        if let Some(caps) = regex.captures(body) {
+            Ok(caps[1].to_string())
+        } else {
+            Err("Regex did not match email body".into())
+        }
     }
 
     async fn get_secret(&self) -> ResultWithError<ApplicationSecret> {

@@ -41,7 +41,6 @@ impl Vars {
         crate::utils::variables::VariablesUtils::replace_var_usage(input)
     }
 
-    #[allow(dead_code)]
     pub fn replace_var(&self, input: &str, extra_map: Option<&HashMap<String, String>>) -> String {
         crate::utils::variables::VariablesUtils::replace_vars(input, &self.all_vars, extra_map)
     }

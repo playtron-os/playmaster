@@ -124,7 +124,7 @@ async fn process_command(args: AppArgs) -> EmptyResult {
             let config = Config::from_curr_dir()?;
             let vars = Vars::all_from_curr_dir()?;
             let run = CodeRun::new(args, config, vars);
-            run.execute()
+            run.execute().await
         }
         models::args::Command::Gen => {
             let config = Config::from_curr_dir()?;

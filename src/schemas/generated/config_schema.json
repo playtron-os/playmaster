@@ -10,6 +10,9 @@
         "$ref": "#/$defs/Dependency"
       }
     },
+    "gmail": {
+      "$ref": "#/$defs/GmailConfig"
+    },
     "hooks": {
       "type": "array",
       "items": {
@@ -61,6 +64,36 @@
         "min_version",
         "version_command"
       ]
+    },
+    "GmailConfig": {
+      "type": "object",
+      "properties": {
+        "credentials": {
+          "$ref": "#/$defs/GmailCredentialsConfig"
+        },
+        "enabled": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "enabled",
+        "credentials"
+      ]
+    },
+    "GmailCredentialsConfig": {
+      "type": "object",
+      "properties": {
+        "s3": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/S3Config"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
     },
     "HookConfig": {
       "type": "object",

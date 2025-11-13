@@ -322,7 +322,7 @@
           "type": "object",
           "properties": {
             "user_input": {
-              "type": "string"
+              "$ref": "#/$defs/UserInput"
             }
           },
           "required": [
@@ -373,6 +373,76 @@
       "required": [
         "by",
         "value"
+      ]
+    },
+    "UserInput": {
+      "type": "object",
+      "properties": {
+        "gmail": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/UserInputGmail"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ]
+    },
+    "UserInputGmail": {
+      "type": "object",
+      "properties": {
+        "from": {
+          "type": "string"
+        },
+        "regex": {
+          "$ref": "#/$defs/UserInputGmailRegexType"
+        },
+        "subject_contains": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "from",
+        "subject_contains",
+        "regex"
+      ]
+    },
+    "UserInputGmailRegexType": {
+      "oneOf": [
+        {
+          "type": "string",
+          "enum": [
+            "mfa"
+          ]
+        },
+        {
+          "type": "object",
+          "properties": {
+            "custom": {
+              "type": "object",
+              "properties": {
+                "pattern": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "pattern"
+              ]
+            }
+          },
+          "additionalProperties": false,
+          "required": [
+            "custom"
+          ]
+        }
       ]
     },
     "WaitFor": {

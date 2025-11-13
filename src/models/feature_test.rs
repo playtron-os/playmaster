@@ -76,11 +76,16 @@ pub enum Step {
         use_step: String,
     },
     UserInput {
-        user_input: String,
-        #[serde(default)]
-        gmail: Option<UserInputGmail>,
+        user_input: UserInput,
     },
     Simple(SimpleStep),
+}
+
+#[derive(Debug, Deserialize, JsonSchema, Clone)]
+pub struct UserInput {
+    pub name: String,
+    #[serde(default)]
+    pub gmail: Option<UserInputGmail>,
 }
 
 #[derive(Debug, Deserialize, JsonSchema, Clone)]
@@ -184,6 +189,7 @@ pub struct UserInputGmail {
 }
 
 #[derive(Debug, Deserialize, JsonSchema, Clone)]
+#[serde(rename_all = "snake_case")]
 pub enum UserInputGmailRegexType {
     Custom { pattern: String },
     Mfa,

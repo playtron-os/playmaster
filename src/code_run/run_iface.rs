@@ -1,3 +1,5 @@
+use std::pin::Pin;
+
 use crate::{
     hooks::iface::HookContext,
     models::{app_state::AppState, config::ProjectType, feature_test::FeatureTest},
@@ -5,7 +7,11 @@ use crate::{
 };
 
 /// Trait that all code run implementations must adhere to.
-pub trait CodeRunTrait {
+pub trait CodeRunTrait: Send + Sync {
     fn get_type(&self) -> ProjectType;
-    fn run(&self, ctx: &HookContext<'_, AppState>, features: &[FeatureTest]) -> EmptyResult;
+    fn run<'a>(
+        &'a self,
+        ctx: &'a HookContext<'a, AppState>,
+        features: &'a [FeatureTest],
+    ) -> Pin<Box<dyn Future<Output = EmptyResult> + Send + 'a>>;
 }

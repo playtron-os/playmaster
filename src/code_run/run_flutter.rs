@@ -3,6 +3,7 @@ use std::{
     fs,
     io::{BufRead as _, BufReader},
     path::{Path, PathBuf},
+    pin::Pin,
     process::{Child, Command, Stdio},
     str::FromStr,
     time::Duration,
@@ -42,29 +43,34 @@ impl CodeRunTrait for RunFlutter {
         ProjectType::Flutter
     }
 
-    fn run(&self, ctx: &HookContext<'_, AppState>, features: &[FeatureTest]) -> EmptyResult {
-        let remote = ctx.get_remote_info()?;
-        let remote = remote.as_ref();
-        let root_dir = ctx.get_root_dir()?;
+    fn run<'a>(
+        &'a self,
+        ctx: &'a HookContext<'a, AppState>,
+        features: &'a [FeatureTest],
+    ) -> Pin<Box<dyn Future<Output = EmptyResult> + Send + 'a>> {
+        Box::pin(async move {
+            let remote = ctx.get_remote_info()?;
+            let remote = remote.as_ref();
+            let root_dir = ctx.get_root_dir()?;
 
-        let exec_dir = if remote.is_some() {
-            // Use remote path for command execution context
-            PathBuf::from_str(&root_dir)?.join("flutter_app")
-        } else {
-            utils::dir::DirUtils::curr_dir()?
-        };
+            let exec_dir = if remote.is_some() {
+                PathBuf::from_str(&root_dir)?.join("flutter_app")
+            } else {
+                utils::dir::DirUtils::curr_dir()?
+            };
 
-        // Prepare environment
-        self.prepare_env(remote, &exec_dir, &root_dir)?;
+            self.prepare_env(remote, &exec_dir, &root_dir)?;
 
-        // Execute either locally or remotely
-        if let Some(remote) = remote {
-            info!("Running Flutter tests remotely");
-            self.execute_remote(ctx, remote, &exec_dir, &root_dir, features)
-        } else {
-            info!("Running Flutter tests locally\n");
-            self.execute_local(ctx, &exec_dir, &root_dir, features)
-        }
+            if let Some(remote) = remote {
+                info!("Running Flutter tests remotely");
+                self.execute_remote(ctx, remote, &exec_dir, &root_dir, features)
+                    .await
+            } else {
+                info!("Running Flutter tests locally\n");
+                self.execute_local(ctx, &exec_dir, &root_dir, features)
+                    .await
+            }
+        })
     }
 }
 
@@ -248,7 +254,7 @@ impl RunFlutter {
         Ok(())
     }
 
-    fn execute_local(
+    async fn execute_local(
         &self,
         ctx: &HookContext<'_, AppState>,
         exec_dir: &PathBuf,
@@ -256,10 +262,10 @@ impl RunFlutter {
         features: &[FeatureTest],
     ) -> EmptyResult {
         let child = self.spawn_flutter_command(exec_dir, root_dir)?;
-        self.process_output(ctx, child, features)
+        self.process_output(ctx, child, features).await
     }
 
-    fn execute_remote(
+    async fn execute_remote(
         &self,
         ctx: &HookContext<'_, AppState>,
         remote: &RemoteInfo,
@@ -277,7 +283,7 @@ impl RunFlutter {
         info!("Remote command: {}\n", cmd);
 
         let output = remote.exec_remote_stream(&cmd)?;
-        self.process_remote_output(ctx, output, features)
+        self.process_remote_output(ctx, output, features).await
     }
 
     fn spawn_flutter_command(&self, exec_dir: &PathBuf, root_dir: &str) -> ResultWithError<Child> {
@@ -305,7 +311,7 @@ impl RunFlutter {
         CommandUtils::with_env_source(root_dir, &format!("flutter drive {args}"))
     }
 
-    fn process_output(
+    async fn process_output(
         &self,
         ctx: &HookContext<'_, AppState>,
         mut child: Child,
@@ -314,7 +320,7 @@ impl RunFlutter {
         let stdout = child.stdout.take().unwrap();
         let reader = BufReader::new(stdout);
 
-        let res = self.process_lines(ctx, reader.lines(), features);
+        let res = self.process_lines(ctx, reader.lines(), features).await;
         let output = child
             .wait_with_output()
             .auto_err("Failed to wait for child process when running flutter tests")?;
@@ -331,22 +337,23 @@ impl RunFlutter {
         res
     }
 
-    fn process_remote_output<I: Iterator<Item = String>>(
+    async fn process_remote_output<I: Iterator<Item = String>>(
         &self,
         ctx: &HookContext<'_, AppState>,
         lines: I,
         features: &[FeatureTest],
     ) -> EmptyResult {
-        self.process_lines(ctx, lines.map(Ok), features)
+        self.process_lines(ctx, lines.map(Ok), features).await
     }
 
-    fn process_lines(
+    async fn process_lines(
         &self,
         ctx: &HookContext<'_, AppState>,
         lines: impl Iterator<Item = std::io::Result<String>>,
         features: &[FeatureTest],
     ) -> EmptyResult {
         let start_time = chrono::Utc::now();
+        let start_timestamp = start_time.timestamp();
         let mut passed = 0;
         let mut failed = 0;
 
@@ -375,13 +382,17 @@ impl RunFlutter {
             if let Some(input_name) = DbusUtils::identify_continue_request(&line)
                 && let Some(curr_test) = current_test.as_ref()
             {
-                if let Err(err) = self.process_user_input(
-                    ctx,
-                    features,
-                    curr_test,
-                    &input_name,
-                    &mut test_spinner,
-                ) {
+                if let Err(err) = self
+                    .process_user_input(
+                        ctx,
+                        features,
+                        curr_test,
+                        &input_name,
+                        &mut test_spinner,
+                        start_timestamp,
+                    )
+                    .await
+                {
                     error!(
                         "Error processing user input for test '{}', input '{}', err:{:?}",
                         curr_test, input_name, err
@@ -490,18 +501,23 @@ impl RunFlutter {
         Ok(())
     }
 
-    fn process_user_input(
+    async fn process_user_input(
         &self,
         ctx: &HookContext<'_, AppState>,
         features: &[FeatureTest],
         curr_test: &str,
         input_name: &str,
         test_spinner: &mut Option<ProgressBar>,
+        start_timestamp: i64,
     ) -> EmptyResult {
         defer! {
             if let Some(spinner) = test_spinner.as_ref() {
                 spinner.enable_steady_tick(Duration::from_millis(80));
             }
+        }
+
+        if let Some(spinner) = test_spinner.as_ref() {
+            spinner.disable_steady_tick();
         }
 
         let user_input = if let Some(gmail_client) = self.get_gmail_client(ctx)
@@ -510,8 +526,8 @@ impl RunFlutter {
         {
             info!("Fetching user input via Gmail for input: {}", input_name);
 
-            let email_from = &gmail_config.from;
-            let email_subject_contains = &gmail_config.subject_contains;
+            let email_from = ctx.vars.replace_var(&gmail_config.from, None);
+            let email_subject_contains = ctx.vars.replace_var(&gmail_config.subject_contains, None);
 
             let regex_pattern = match &gmail_config.regex {
                 crate::models::feature_test::UserInputGmailRegexType::Custom { pattern } => {
@@ -524,18 +540,23 @@ impl RunFlutter {
 
             let re = Regex::new(&regex_pattern).auto_err("Error compiling user input regex")?;
 
-            tokio::runtime::Handle::current()
-                .block_on(async {
-                    gmail_client
-                        .fetch_latest_email_matching_regex(email_from, email_subject_contains, &re)
-                        .await
-                })
-                .map_err(|err| {
-                    error!("Error fetching user input from Gmail, err:{err:?}");
-                    err
-                })
+            gmail_client
+                .fetch_latest_email_matching_regex(
+                    &email_from,
+                    &email_subject_contains,
+                    &re,
+                    Some(start_timestamp),
+                    30,
+                    3,
+                )
+                .await
                 .unwrap_or_default()
         } else {
+            debug!(
+                "Prompting for user input via DBus for input: {}",
+                input_name
+            );
+
             OsUtils::ask(&format!("User input requested for {}:", input_name))
                 .map_err(|err| {
                     error!("Error during prompting for user input, err:{err:?}");
@@ -543,10 +564,6 @@ impl RunFlutter {
                 })
                 .unwrap_or_default()
         };
-
-        if let Some(spinner) = test_spinner.as_ref() {
-            spinner.disable_steady_tick();
-        }
 
         debug!("User input: {}", user_input);
         let dbus_cmd = DbusUtils::dbus_method_continue_cmd(&user_input);
@@ -564,6 +581,8 @@ impl RunFlutter {
         if !ctx.config.gmail.enabled {
             return None;
         }
+
+        debug!("Creating Gmail client for user input retrieval");
 
         Some(GmailClient::new(
             ctx.config
@@ -616,7 +635,7 @@ impl RunFlutter {
     ) -> Option<String> {
         features.iter().find_map(|f| {
             f.tests.iter().find_map(|t| {
-                let joined = format!("{} {}", f.name, t.name);
+                let joined = format!("{} - {}", f.name, t.name);
                 if full_test_name == joined {
                     Some(t.description.clone())
                 } else {
@@ -635,17 +654,16 @@ impl RunFlutter {
         features
             .iter()
             .find_map(|f| {
+                debug!("Searching in feature test: {}", f.name);
                 f.tests.iter().find_map(|t| {
-                    let joined = format!("{} {}", f.name, t.name);
+                    let joined = format!("{} - {}", f.name, t.name);
+                    debug!("Comparing with test name: {}", joined);
                     if full_test_name == joined {
                         t.steps.iter().find_map(|s| {
-                            if let crate::models::feature_test::Step::UserInput {
-                                user_input,
-                                gmail,
-                            } = s
-                            {
-                                if user_input == user_input_name {
-                                    Some(gmail.clone())
+                            if let crate::models::feature_test::Step::UserInput { user_input } = s {
+                                if user_input.name == user_input_name {
+                                    debug!("Found user input: {}", user_input.name);
+                                    Some(user_input.gmail.clone())
                                 } else {
                                     None
                                 }
