@@ -10,11 +10,11 @@ use google_gmail1::{
     },
     yup_oauth2::{
         ApplicationSecret, InstalledFlowAuthenticator, InstalledFlowReturnMethod,
-        authenticator::Authenticator,
+        authenticator::Authenticator, storage::TokenStorage,
     },
 };
 use regex::Regex;
-use tracing::{debug, info};
+use tracing::{debug, error, info};
 
 use crate::{
     gmail::s3_storage::S3TokenStorage,
@@ -46,9 +46,34 @@ impl GmailClient {
         timeout_secs: u64,
         poll_interval_secs: u64,
     ) -> ResultWithError<String> {
+        debug!("fetch_latest_email_matching_regex called");
+        debug!(
+            "S3 bucket: {:?}, S3 key_prefix: {:?}",
+            self.s3_bucket, self.s3_key_prefix
+        );
+
         //  Auth
-        let secret = self.get_secret().await?;
-        let auth = self.get_flow(secret).await?;
+        let secret = match self.get_secret().await {
+            Ok(s) => {
+                debug!("Successfully loaded OAuth client credentials");
+                s
+            }
+            Err(e) => {
+                error!("Failed to load OAuth client credentials: {}", e);
+                return Err(e);
+            }
+        };
+
+        let auth = match self.get_flow(secret).await {
+            Ok(a) => {
+                debug!("Successfully created authenticator");
+                a
+            }
+            Err(e) => {
+                error!("Failed to create authenticator: {}", e);
+                return Err(e);
+            }
+        };
 
         let executor = TokioExecutor::new();
         let https = HttpsConnectorBuilder::new()
@@ -63,17 +88,69 @@ impl GmailClient {
 
         // Build query
         let q = self.build_query(from, subject_contains, after_timestamp);
+        debug!("Gmail query: {}", q);
 
         // Poll for a message
         let msg_id = self
             .search_latest_message(&hub, user_id, &q, timeout_secs, poll_interval_secs)
             .await?;
 
+        debug!("Found message with ID: {}", msg_id);
+
         // Fetch body
         let body = self.get_email_body(&hub, user_id, &msg_id).await?;
+        debug!("Email body length: {} chars", body.len());
 
         // Extract via regex
         self.extract_code_from_body(&body, regex)
+    }
+
+    /// Validates that Gmail credentials are available and working.
+    /// Returns Ok(()) if credentials are valid, or an error if authentication is needed.
+    pub async fn validate_credentials(&self) -> EmptyResult {
+        debug!("Validating Gmail credentials");
+        debug!(
+            "S3 bucket: {:?}, S3 key_prefix: {:?}",
+            self.s3_bucket, self.s3_key_prefix
+        );
+
+        // Check if we have a stored token with a refresh token
+        if let Some(storage) = self.get_storage().await {
+            debug!("Got S3 storage, checking for token");
+            let scopes = &["https://www.googleapis.com/auth/gmail.readonly"];
+            if let Some(token) = storage.get(scopes).await {
+                debug!(
+                    "Found token in S3, has refresh_token: {}",
+                    token.refresh_token.is_some()
+                );
+                // If we have a refresh token, credentials are valid (OAuth will handle refresh)
+                if token.refresh_token.is_some() {
+                    debug!("Gmail refresh token exists, credentials are valid");
+                    return Ok(());
+                }
+            } else {
+                debug!("No token found in S3 storage");
+            }
+        } else {
+            debug!("No S3 storage configured");
+        }
+
+        Err("Gmail credentials not found or invalid. Please run 'playmaster gmail' to authenticate.".into())
+    }
+
+    /// Ensures Gmail credentials are valid, running authentication flow if needed.
+    /// This should be called at the start of test runs that require Gmail.
+    pub async fn ensure_authenticated(&self) -> EmptyResult {
+        match self.validate_credentials().await {
+            Ok(()) => {
+                info!("Gmail credentials validated successfully");
+                Ok(())
+            }
+            Err(_) => {
+                info!("Gmail credentials not found or expired, initiating authentication flow");
+                self.generate_refresh_token().await
+            }
+        }
     }
 
     pub async fn generate_refresh_token(&self) -> EmptyResult {
@@ -168,7 +245,9 @@ impl GmailClient {
     }
 
     async fn get_secret(&self) -> ResultWithError<ApplicationSecret> {
+        debug!("get_secret: Looking for OAuth client credentials file");
         let credentials = Self::find_credentials_json()?;
+        debug!("get_secret: Found credentials at {:?}", credentials);
         Ok(google_gmail1::yup_oauth2::read_application_secret(credentials).await?)
     }
 
@@ -176,7 +255,12 @@ impl GmailClient {
         &self,
         secret: ApplicationSecret,
     ) -> ResultWithError<Authenticator<HttpsConnector<HttpConnector>>> {
+        debug!(
+            "get_flow: Creating authenticator, S3 bucket: {:?}",
+            self.s3_bucket
+        );
         if let Some(storage) = self.get_storage().await {
+            debug!("get_flow: Using S3 token storage");
             Ok(
                 InstalledFlowAuthenticator::builder(
                     secret,
@@ -187,8 +271,10 @@ impl GmailClient {
                 .await?,
             )
         } else {
+            debug!("get_flow: Using local token storage");
             let token_path = DirUtils::config_dir()?;
             let token_path = token_path.join("gmail_token.json");
+            debug!("get_flow: Local token path: {:?}", token_path);
 
             Ok(
                 InstalledFlowAuthenticator::builder(

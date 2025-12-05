@@ -10,3 +10,16 @@ hooks:
     async: true
     env:
       TEST_ENV: "1"
+
+# Gmail configuration for fetching MFA codes
+gmail:
+  enabled: true
+  credentials:
+    # Option 1: IMAP with App Password (recommended - simpler setup)
+    imap:
+      email: "your-email@gmail.com"
+      app_password: "${GMAIL_APP_PASSWORD}"  # Set via environment variable
+    # Option 2: OAuth with S3 token storage (legacy)
+    # s3:
+    #   bucket: playtron-staging-testing-creds
+    #   key_prefix: gmail/playmaster-e2e/

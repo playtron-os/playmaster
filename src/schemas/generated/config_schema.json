@@ -83,6 +83,17 @@
     "GmailCredentialsConfig": {
       "type": "object",
       "properties": {
+        "imap": {
+          "description": "IMAP configuration for Gmail access using App Password",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ImapConfig"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
         "s3": {
           "anyOf": [
             {
@@ -147,6 +158,23 @@
         "verify_system",
         "prepare_system",
         "finished"
+      ]
+    },
+    "ImapConfig": {
+      "type": "object",
+      "properties": {
+        "app_password": {
+          "description": "Google App Password (not your regular password)\nCan use environment variable syntax like ${GMAIL_APP_PASSWORD}",
+          "type": "string"
+        },
+        "email": {
+          "description": "Gmail address (e.g., \"your@gmail.com\")",
+          "type": "string"
+        }
+      },
+      "required": [
+        "email",
+        "app_password"
       ]
     },
     "InstallSource": {

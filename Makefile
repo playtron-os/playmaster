@@ -40,7 +40,7 @@ gen:
 # ----- Run Gmail Code Refresh -----
 gmail:
 	@echo "🚀 Running $(BIN_NAME)..."
-	cargo run -- gmail
+	cd ./samples/flutter_sample_app && cargo run -- gmail
 
 # ----- Run CLI -----
 test:

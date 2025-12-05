@@ -21,8 +21,8 @@ plugins:
     - replacements:
         - files:
             - Cargo.toml
-          from: '^version = .*"$'
-          to: 'version = "${nextRelease.version}"'
+          from: '(^\[package\][\s\S]*?^version = )"[^"]*"'
+          to: '$1"${nextRelease.version}"'
           #results:
           #  - file: Cargo.toml
           #    hasChanged: true

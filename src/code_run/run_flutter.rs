@@ -18,7 +18,7 @@ use tracing::{debug, error, info};
 
 use crate::{
     code_run::run_iface::CodeRunTrait,
-    gmail::client::GmailClient,
+    gmail::{client::GmailClient, imap_client::ImapGmailClient},
     hooks::iface::HookContext,
     models::{
         app_state::{AppState, RemoteInfo},
@@ -521,11 +521,46 @@ impl RunFlutter {
             spinner.disable_steady_tick();
         }
 
-        let user_input = if let Some(gmail_client) = self.get_gmail_client(ctx)
+        let user_input = if let Some(imap_client) = self.get_imap_client(ctx)
             && let Some(gmail_config) =
                 self.find_feature_test_gmail_config(features, curr_test, input_name)
         {
-            info!("Fetching user input via Gmail for input: {}", input_name);
+            // Use IMAP client (preferred - simpler auth with App Password)
+            info!("Fetching user input via IMAP for input: {}", input_name);
+
+            let email_from = ctx.vars.replace_var(&gmail_config.from, None);
+            let email_subject_contains = ctx.vars.replace_var(&gmail_config.subject_contains, None);
+
+            let regex_pattern = match &gmail_config.regex {
+                crate::models::feature_test::UserInputGmailRegexType::Custom { pattern } => {
+                    pattern.clone()
+                }
+                crate::models::feature_test::UserInputGmailRegexType::Mfa => {
+                    r"\b(\d{6})\b".to_string()
+                }
+            };
+
+            let re = Regex::new(&regex_pattern).auto_err("Error compiling user input regex")?;
+
+            imap_client
+                .fetch_latest_email_matching_regex(
+                    &email_from,
+                    &email_subject_contains,
+                    &re,
+                    Some(start_timestamp),
+                    30,
+                    3,
+                )
+                .unwrap_or_default()
+        } else if let Some(gmail_client) = self.get_gmail_client(ctx)
+            && let Some(gmail_config) =
+                self.find_feature_test_gmail_config(features, curr_test, input_name)
+        {
+            // Fall back to OAuth Gmail client
+            info!(
+                "Fetching user input via Gmail OAuth for input: {}",
+                input_name
+            );
 
             let email_from = ctx.vars.replace_var(&gmail_config.from, None);
             let email_subject_contains = ctx.vars.replace_var(&gmail_config.subject_contains, None);
@@ -576,6 +611,24 @@ impl RunFlutter {
         debug!("Sent DBus continue command");
 
         Ok(())
+    }
+
+    fn get_imap_client(&self, ctx: &HookContext<'_, AppState>) -> Option<ImapGmailClient> {
+        if !ctx.config.gmail.enabled {
+            return None;
+        }
+
+        let imap_config = ctx.config.gmail.credentials.imap.as_ref()?;
+
+        debug!("Creating IMAP Gmail client for user input retrieval");
+
+        // Replace any environment variables in the app password
+        let app_password = ctx.vars.replace_var(&imap_config.app_password, None);
+
+        Some(ImapGmailClient::new(
+            imap_config.email.clone(),
+            app_password,
+        ))
     }
 
     fn get_gmail_client(&self, ctx: &HookContext<'_, AppState>) -> Option<GmailClient> {

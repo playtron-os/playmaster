@@ -156,4 +156,15 @@ pub struct GmailConfig {
 #[derive(Debug, Default, Deserialize, Clone, JsonSchema)]
 pub struct GmailCredentialsConfig {
     pub s3: Option<S3Config>,
+    /// IMAP configuration for Gmail access using App Password
+    pub imap: Option<ImapConfig>,
+}
+
+#[derive(Debug, Deserialize, Clone, JsonSchema)]
+pub struct ImapConfig {
+    /// Gmail address (e.g., "your@gmail.com")
+    pub email: String,
+    /// Google App Password (not your regular password)
+    /// Can use environment variable syntax like ${GMAIL_APP_PASSWORD}
+    pub app_password: String,
 }

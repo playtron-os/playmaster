@@ -1,9 +1,10 @@
 use std::sync::{Arc, RwLock};
 
-use tracing::{error, info};
+use tracing::{error, info, warn};
 
 use crate::{
     code_run,
+    gmail::{client::GmailClient, imap_client::ImapGmailClient},
     hooks::{
         self,
         iface::{HookContext, HookListExt as _, HookType},
@@ -91,6 +92,35 @@ impl CodeRun {
             vars: &self.vars,
             state: Arc::clone(&self.state),
         };
+
+        // Validate Gmail/IMAP credentials if Gmail is enabled
+        if self.config.gmail.enabled {
+            // Prefer IMAP (simpler App Password auth) over OAuth
+            if let Some(imap_config) = &self.config.gmail.credentials.imap {
+                let app_password = self.vars.replace_var(&imap_config.app_password, None);
+                let imap_client = ImapGmailClient::new(imap_config.email.clone(), app_password);
+
+                if let Err(err) = imap_client.validate_credentials() {
+                    warn!(
+                        "IMAP authentication failed: {}. Tests requiring Gmail MFA will fail.",
+                        err
+                    );
+                } else {
+                    info!("IMAP credentials validated successfully");
+                }
+            } else if let Some(creds) = &self.config.gmail.credentials.s3 {
+                // Fall back to OAuth if no IMAP config
+                let gmail_client =
+                    GmailClient::new(Some(creds.bucket.clone()), Some(creds.key_prefix.clone()));
+
+                if let Err(err) = gmail_client.ensure_authenticated().await {
+                    warn!(
+                        "Gmail OAuth authentication failed: {}. Tests requiring Gmail MFA will fail.",
+                        err
+                    );
+                }
+            }
+        }
 
         let features = match FeatureTest::all_from_curr_dir() {
             Ok(features) => features,
