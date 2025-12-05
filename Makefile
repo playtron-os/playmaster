@@ -114,6 +114,11 @@ install:
 	@echo "📦 Installing $(BIN_NAME) globally..."
 	cargo install --path . --force
 
+# ----- Uninstall Globally -----
+uninstall:
+	@echo "🗑️  Uninstalling $(BIN_NAME) globally..."
+	cargo uninstall $(BIN_NAME)
+
 # ----- Linting -----
 clippy:
 	@echo "🧹 Running Clippy..."
