@@ -672,11 +672,46 @@ impl RunFlutter {
             error!("Test Description: {}", desc);
         }
 
-        error!("Test output...");
-        for line in current_test_output.lines() {
-            error!("    {}", CommandUtils::unescape_ansi(line.to_owned()));
+        // Write test output to a file instead of dumping to terminal
+        let sanitized_name = test_name
+            .replace([' ', '/', '\\'], "_")
+            .chars()
+            .filter(|c| c.is_alphanumeric() || *c == '_' || *c == '-')
+            .collect::<String>();
+        let timestamp = chrono::Utc::now().format("%Y%m%d_%H%M%S");
+        let log_filename = format!("{}_{}.log", sanitized_name, timestamp);
+
+        let log_dir = utils::dir::DirUtils::curr_dir()
+            .map(|d| d.join("integration_test").join("logs"))
+            .unwrap_or_else(|_| PathBuf::from("integration_test/logs"));
+
+        if let Err(e) = fs::create_dir_all(&log_dir) {
+            error!("Failed to create log directory: {}", e);
         }
-        error!("End of test output\n");
+
+        let log_path = log_dir.join(&log_filename);
+
+        // Clean ANSI codes and write to file
+        let cleaned_output: String = current_test_output
+            .lines()
+            .map(|line| CommandUtils::unescape_ansi(line.to_owned()))
+            .collect::<Vec<_>>()
+            .join("\n");
+
+        match fs::write(&log_path, &cleaned_output) {
+            Ok(_) => {
+                error!("📄 Test output saved to: {}", log_path.display());
+            }
+            Err(e) => {
+                error!("Failed to write test output to file: {}", e);
+                // Fall back to printing to terminal if file write fails
+                error!("Test output...");
+                for line in current_test_output.lines() {
+                    error!("    {}", CommandUtils::unescape_ansi(line.to_owned()));
+                }
+                error!("End of test output\n");
+            }
+        }
 
         ctx.increment_results_failed()?;
         Ok(())
